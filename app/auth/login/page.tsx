@@ -54,60 +54,60 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left Side - Dark Green */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-b from-[#064E3B] to-[#0D6948] text-white p-8 xl:p-12 flex-col justify-between">
+      <div className="w-full lg:w-1/2 bg-gradient-to-b from-[#064E3B] to-[#0D6948] text-white p-4 sm:p-6 lg:p-8 xl:p-12 flex flex-col justify-start lg:justify-between min-h-auto lg:min-h-screen">
         <div>
           {/* Logo */}
-          <div className="mb-12 lg:mb-16">
+          <div className="mb-4 sm:mb-6 lg:mb-12 lg:mb-16">
             <img
               src="/login-logo.png"
               alt="Save2740 Logo"
-              className="h-12 sm:h-14 lg:h-16 w-auto"
+              className="h-8 sm:h-10 lg:h-16 w-auto"
             />
           </div>
 
           {/* Heading */}
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-4 lg:mb-6">
+          <h1 className="text-xl sm:text-2xl lg:text-4xl xl:text-5xl font-bold leading-tight mb-2 sm:mb-3 lg:mb-6">
             Master Your Savings Habit.
           </h1>
 
           {/* Description */}
-          <p className="text-sm sm:text-base lg:text-lg text-gray-100 max-w-md">
+          <p className="text-xs sm:text-xs lg:text-base xl:text-lg text-gray-100 max-w-md leading-relaxed">
             Join the $27.40 daily challenge. Turn small consistent actions into massive yearly results ($10,000+).
           </p>
         </div>
 
         {/* Features at bottom */}
-        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 lg:gap-8">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 lg:gap-8 mt-6 lg:mt-0">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#10B981] flex items-center justify-center flex-shrink-0">
-              <Check size={16} className="text-white sm:w-5" strokeWidth={3} />
+            <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full bg-[#10B981] flex items-center justify-center flex-shrink-0">
+              <Check size={14} className="text-white sm:w-4 lg:w-5" strokeWidth={3} />
             </div>
-            <span className="text-xs sm:text-sm lg:text-base text-gray-100 font-medium">Streak Tracking</span>
+            <span className="text-xs sm:text-xs lg:text-base text-gray-100 font-medium">Streak Tracking</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#10B981] flex items-center justify-center flex-shrink-0">
-              <Check size={16} className="text-white sm:w-5" strokeWidth={3} />
+            <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full bg-[#10B981] flex items-center justify-center flex-shrink-0">
+              <Check size={14} className="text-white sm:w-4 lg:w-5" strokeWidth={3} />
             </div>
-            <span className="text-xs sm:text-sm lg:text-base text-gray-100 font-medium">Multipliers</span>
+            <span className="text-xs sm:text-xs lg:text-base text-gray-100 font-medium">Multipliers</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#10B981] flex items-center justify-center flex-shrink-0">
-              <Check size={16} className="text-white sm:w-5" strokeWidth={3} />
+            <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full bg-[#10B981] flex items-center justify-center flex-shrink-0">
+              <Check size={14} className="text-white sm:w-4 lg:w-5" strokeWidth={3} />
             </div>
-            <span className="text-xs sm:text-sm lg:text-base text-gray-100 font-medium">Secure Wallet</span>
+            <span className="text-xs sm:text-xs lg:text-base text-gray-100 font-medium">Secure Wallet</span>
           </div>
         </div>
       </div>
 
       {/* Right Side - Login Form */}
-      <div className="w-full lg:w-1/2 bg-gray-50 flex items-center justify-center p-4 sm:p-6 min-h-screen">
+      <div className="w-full lg:w-1/2 bg-gray-50 flex items-center justify-center p-4 sm:p-6 min-h-screen lg:min-h-auto">
         <div className="w-full max-w-md">
           {/* Heading */}
           <div className="text-center mb-6 sm:mb-8">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-            <p className="text-sm sm:text-base text-gray-600">Enter your email and password to sign in</p>
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+            <p className="text-xs sm:text-sm lg:text-base text-gray-600">Enter your email and password to sign in</p>
           </div>
 
           {/* Error Alert */}
