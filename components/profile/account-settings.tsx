@@ -26,14 +26,14 @@ export function AccountSettings() {
             {/* Notifications */}
             <Card className="border-0 bg-white rounded-2xl sm:rounded-3xl shadow-lg">
                 <CardHeader className="px-4 sm:px-6">
-                    <CardTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                    <CardTitle className="text-lg sm:text-2xl font-bold flex items-center gap-2">
                         <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-brand-green" />
                         Notification Preferences
                     </CardTitle>
                     <CardDescription className="text-sm">Manage how you receive updates and alerts</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-gray-50 rounded-xl">
+                <CardContent className="space-y-3 sm:space-y-6 px-4 sm:px-6">
+                    <div className="flex flex-row items-center justify-between gap-2 p-2.5 sm:p-4 bg-gray-50 rounded-xl">
                         <div className="flex items-start sm:items-center gap-3 flex-1">
                             <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 mt-0.5 sm:mt-0 shrink-0" />
                             <div className="flex-1 min-w-0">
@@ -45,11 +45,11 @@ export function AccountSettings() {
                             id="email"
                             checked={settings.emailNotifications}
                             onCheckedChange={() => handleToggle("emailNotifications")}
-                            className="shrink-0"
+                            className="shrink-0 scale-75 sm:scale-100 origin-right data-[state=checked]:bg-brand-green"
                         />
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-gray-50 rounded-xl">
+                    <div className="flex flex-row items-center justify-between gap-2 p-2.5 sm:p-4 bg-gray-50 rounded-xl">
                         <div className="flex items-start sm:items-center gap-3 flex-1">
                             <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 mt-0.5 sm:mt-0 shrink-0" />
                             <div className="flex-1 min-w-0">
@@ -61,11 +61,11 @@ export function AccountSettings() {
                             id="sms"
                             checked={settings.smsNotifications}
                             onCheckedChange={() => handleToggle("smsNotifications")}
-                            className="shrink-0"
+                            className="shrink-0 scale-75 sm:scale-100 origin-right data-[state=checked]:bg-brand-green"
                         />
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-gray-50 rounded-xl">
+                    <div className="flex flex-row items-center justify-between gap-2 p-2.5 sm:p-4 bg-gray-50 rounded-xl">
                         <div className="flex items-start sm:items-center gap-3 flex-1">
                             <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 mt-0.5 sm:mt-0 shrink-0" />
                             <div className="flex-1 min-w-0">
@@ -77,11 +77,11 @@ export function AccountSettings() {
                             id="push"
                             checked={settings.pushNotifications}
                             onCheckedChange={() => handleToggle("pushNotifications")}
-                            className="shrink-0"
+                            className="shrink-0 scale-75 sm:scale-100 origin-right data-[state=checked]:bg-brand-green"
                         />
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-gray-50 rounded-xl">
+                    <div className="flex flex-row items-center justify-between gap-2 p-2.5 sm:p-4 bg-gray-50 rounded-xl">
                         <div className="flex items-start sm:items-center gap-3 flex-1">
                             <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 mt-0.5 sm:mt-0 shrink-0" />
                             <div className="flex-1 min-w-0">
@@ -93,7 +93,7 @@ export function AccountSettings() {
                             id="marketing"
                             checked={settings.marketingEmails}
                             onCheckedChange={() => handleToggle("marketingEmails")}
-                            className="shrink-0"
+                            className="shrink-0 scale-75 sm:scale-100 origin-right data-[state=checked]:bg-brand-green"
                         />
                     </div>
                 </CardContent>
@@ -102,14 +102,14 @@ export function AccountSettings() {
             {/* Security */}
             <Card className="border-0 bg-white rounded-2xl sm:rounded-3xl shadow-lg">
                 <CardHeader className="px-4 sm:px-6">
-                    <CardTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                    <CardTitle className="text-lg sm:text-2xl font-bold flex items-center gap-2">
                         <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-brand-green" />
                         Security Settings
                     </CardTitle>
                     <CardDescription className="text-sm">Enhance your account security</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-emerald-50 rounded-xl border border-emerald-200">
+                    <div className="flex flex-row items-center justify-between gap-2 p-2.5 sm:p-4 bg-emerald-50 rounded-xl border border-emerald-200">
                         <div className="flex items-start sm:items-center gap-3 flex-1">
                             <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-brand-green mt-0.5 sm:mt-0 shrink-0" />
                             <div className="flex-1 min-w-0">
@@ -121,11 +121,11 @@ export function AccountSettings() {
                             id="2fa"
                             checked={settings.twoFactorAuth}
                             onCheckedChange={() => handleToggle("twoFactorAuth")}
-                            className="shrink-0"
+                            className="shrink-0 scale-75 sm:scale-100 origin-right data-[state=checked]:bg-brand-green"
                         />
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-gray-50 rounded-xl">
+                    <div className="flex flex-row items-center justify-between gap-2 p-2.5 sm:p-4 bg-gray-50 rounded-xl">
                         <div className="flex items-start sm:items-center gap-3 flex-1">
                             <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 mt-0.5 sm:mt-0 shrink-0" />
                             <div className="flex-1 min-w-0">
@@ -137,7 +137,7 @@ export function AccountSettings() {
                             id="security"
                             checked={settings.securityAlerts}
                             onCheckedChange={() => handleToggle("securityAlerts")}
-                            className="shrink-0"
+                            className="shrink-0 scale-75 sm:scale-100 origin-right data-[state=checked]:bg-brand-green"
                         />
                     </div>
 
@@ -150,7 +150,7 @@ export function AccountSettings() {
             {/* Preferences */}
             <Card className="border-0 bg-white rounded-2xl sm:rounded-3xl shadow-lg">
                 <CardHeader className="px-4 sm:px-6">
-                    <CardTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                    <CardTitle className="text-lg sm:text-2xl font-bold flex items-center gap-2">
                         <Globe className="w-5 h-5 sm:w-6 sm:h-6 text-brand-green" />
                         Preferences
                     </CardTitle>

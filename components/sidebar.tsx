@@ -369,12 +369,13 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Footer Section - Fixed at Bottom */}
       <div className="flex-shrink-0 p-3 sm:p-4 border-t border-slate-100 space-y-2 sm:space-y-3">
         <div className="space-y-2 sm:space-y-3">
-          <img
-            src="/profile-section.png"
-            alt="User Profile"
-            className="h-auto max-h-10 object-contain cursor-pointer"
-            onClick={() => window.location.href = '/profile'}
-          />
+          <Link href="/profile" onClick={onClose} prefetch={true}>
+            <img
+              src="/profile-section.png"
+              alt="User Profile"
+              className="h-auto max-h-10 object-contain cursor-pointer"
+            />
+          </Link>
 
           <button
             onClick={() => setLogoutOpen(true)}

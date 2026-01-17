@@ -22,7 +22,7 @@ function SubscriptionRefundPolicyContent() {
                     <div className="max-w-4xl mx-auto space-y-6">
 
                         <div className="mb-8">
-                            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">Subscription & Refund Policy</h1>
+                            <h1 className="hidden lg:block text-2xl md:text-3xl font-bold text-slate-900 mb-2">Subscription & Refund Policy</h1>
                             <p className="text-slate-600">Last updated: January 8, 2026</p>
                         </div>
 

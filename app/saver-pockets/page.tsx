@@ -117,16 +117,21 @@ function SaverPocketsPageContent() {
       </Sheet>
 
       <main className="flex-1 overflow-y-auto flex flex-col">
-        <DashboardHeader title="Saver Pockets" onMenuClick={() => setIsSidebarOpen(true)} />
+        <DashboardHeader title="Saver Pockets" onMenuClick={() => setIsSidebarOpen(true)} showMobileTitle={false} />
         <div className="flex-1 p-2 sm:p-3 md:p-6 lg:p-8 xl:p-10">
           <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 md:space-y-8">
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 bg-brand-green hover:bg-emerald-500 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg md:rounded-xl font-semibold transition-colors shadow-sm"
-            >
-              <Plus className="w-4 md:w-5 h-4 md:h-5" />
-              New Pocket
-            </button>
+            <div className="flex items-center justify-between">
+              {/* Mobile-only Title - Integrated with button row */}
+              <h1 className="lg:hidden text-2xl font-bold text-slate-900">Saver Pockets</h1>
+
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center gap-2 bg-brand-green hover:bg-emerald-500 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg md:rounded-xl font-semibold transition-colors shadow-sm"
+              >
+                <Plus className="w-4 md:w-5 h-4 md:h-5" />
+                New Pocket
+              </button>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
               {pockets.map((pocket) => (

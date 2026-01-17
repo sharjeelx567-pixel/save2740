@@ -102,11 +102,11 @@ function ProfilePageContent() {
 
           {/* Page Header */}
           <div className="bg-white border-b border-slate-200 px-4 sm:px-5 md:px-8 lg:px-10 py-6 sm:py-8">
-            <div className="max-w-6xl mx-auto">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 mb-2">
+            <div className="max-w-7xl mx-auto">
+              <h1 className="text-2xl sm:text-3xl lg:text-3xl font-bold text-slate-900 mb-2">
                 Account Settings
               </h1>
-              <p className="text-slate-600 text-base sm:text-lg">
+              <p className="text-slate-600 text-sm sm:text-base">
                 Manage your profile, security, and preferences
               </p>
             </div>
@@ -114,7 +114,7 @@ function ProfilePageContent() {
 
           {/* Tabs - Mobile Responsive with Horizontal Scroll */}
           <div className="bg-white border-b border-slate-200 sticky top-[73px] z-10">
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-7xl mx-auto">
               {/* Horizontal scroll container for mobile */}
               <div className="overflow-x-auto hide-scrollbar">
                 <div className="flex gap-1 px-2 sm:px-4 md:px-8 lg:px-10 min-w-max">
@@ -148,7 +148,7 @@ function ProfilePageContent() {
 
           {/* Content */}
           <div className="flex-1 px-4 sm:px-5 md:px-8 lg:px-10 py-6 sm:py-8">
-            <div className="max-w-6xl mx-auto">{renderContent()}</div>
+            <div className="max-w-7xl mx-auto">{renderContent()}</div>
           </div>
         </main>
       </div>
