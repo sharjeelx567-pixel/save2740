@@ -139,8 +139,8 @@ function WalletTransactionsPageContent() {
             {/* Transactions Table */}
             <Card className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
               <CardContent className="p-0">
-                <div className="overflow-x-auto hide-scrollbar">
-                  <table className="w-full">
+                <div className="overflow-x-auto hide-scrollbar -mx-4 sm:mx-0">
+                  <table className="w-full min-w-[640px] sm:min-w-full">
                     <thead className="bg-slate-50 border-b border-slate-200">
                       <tr>
                         <th className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-slate-700">Description</th>
@@ -198,7 +198,7 @@ function WalletTransactionsPageContent() {
                           </td>
                           <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4">
                             <span
-                              className={`px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-medium transition-all duration-200 whitespace-nowrap ${getStatusColor(
+                              className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-xs font-medium transition-all duration-200 whitespace-nowrap ${getStatusColor(
                                 transaction.status
                               )}`}
                             >
@@ -216,7 +216,7 @@ function WalletTransactionsPageContent() {
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="flex items-center gap-0.5 px-1.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-sm text-brand-green font-medium hover:bg-emerald-50 rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent whitespace-nowrap flex-shrink-0"
+                    className="flex items-center gap-0.5 px-1.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-brand-green font-medium hover:bg-emerald-50 rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent whitespace-nowrap flex-shrink-0"
                   >
                     <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">Previous</span>
@@ -226,7 +226,7 @@ function WalletTransactionsPageContent() {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`w-6 h-6 sm:w-8 sm:h-8 rounded text-[10px] sm:text-sm font-medium transition-all duration-200 flex-shrink-0 ${currentPage === page
+                      className={`w-6 h-6 sm:w-8 sm:h-8 rounded text-xs sm:text-sm font-medium transition-all duration-200 flex-shrink-0 ${currentPage === page
                         ? "bg-brand-green text-white shadow-md"
                         : "text-slate-700 hover:bg-slate-100"
                         }`}
@@ -238,7 +238,7 @@ function WalletTransactionsPageContent() {
                   <button
                     onClick={() => setCurrentPage((prev) => Math.min(4, prev + 1))}
                     disabled={currentPage === 4}
-                    className="flex items-center gap-0.5 px-1.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-sm text-brand-green font-medium hover:bg-emerald-50 rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent whitespace-nowrap flex-shrink-0"
+                    className="flex items-center gap-0.5 px-1.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-brand-green font-medium hover:bg-emerald-50 rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent whitespace-nowrap flex-shrink-0"
                   >
                     <span className="hidden sm:inline">Next</span>
                     <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />

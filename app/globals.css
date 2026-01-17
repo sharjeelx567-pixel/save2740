@@ -121,8 +121,8 @@
 }
 
 @theme inline {
-  --font-sans: "Geist", "Geist Fallback";
-  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --color-brand-green: #04C988;
   --color-brand-green-light: #F0FDF4;
   --color-dark-navy: #0f172a;
@@ -172,8 +172,145 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    font-family: var(--font-inter), var(--font-sans);
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-inter), var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ===================================
+     TYPOGRAPHY SYSTEM
+     Consistent typography across the site
+     =================================== */
+
+  /* Base Typography */
+  p, span, div, li {
+    @apply text-base;
+    font-size: 1rem; /* 16px base */
+    line-height: 1.5;
+  }
+
+  /* Heading Scale - Consistent across all pages */
+  h1 {
+    @apply text-3xl sm:text-4xl md:text-5xl lg:text-6xl;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5em;
+  }
+
+  h2 {
+    @apply text-2xl sm:text-3xl md:text-4xl lg:text-5xl;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.5em;
+  }
+
+  h3 {
+    @apply text-xl sm:text-2xl md:text-3xl lg:text-4xl;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 0.5em;
+  }
+
+  h4 {
+    @apply text-lg sm:text-xl md:text-2xl lg:text-3xl;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 0.5em;
+  }
+
+  h5 {
+    @apply text-base sm:text-lg md:text-xl lg:text-2xl;
+    font-weight: 600;
+    line-height: 1.5;
+    margin-bottom: 0.5em;
+  }
+
+  h6 {
+    @apply text-sm sm:text-base md:text-lg lg:text-xl;
+    font-weight: 600;
+    line-height: 1.5;
+    margin-bottom: 0.5em;
+  }
+
+  /* Paragraphs */
+  p {
+    @apply text-base;
+    font-size: 1rem; /* 16px */
+    line-height: 1.6;
+    margin-bottom: 1em;
+  }
+
+  /* Labels - Consistent sizing */
+  label {
+    @apply text-sm font-medium;
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.5;
+  }
+
+  /* Inputs - Consistent sizing */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  textarea,
+  select {
+    @apply text-base;
+    font-size: 1rem; /* 16px - prevents iOS zoom */
+    line-height: 1.5;
+    font-family: inherit;
+  }
+
+  /* Small text - for captions, hints, etc. */
+  small,
+  .text-small {
+    @apply text-sm;
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.5;
+  }
+
+  /* Extra small text - for labels, badges, etc. */
+  .text-xs-custom {
+    @apply text-xs;
+    font-size: 0.75rem; /* 12px */
+    line-height: 1.5;
+  }
+
+  /* Links */
+  a {
+    @apply text-base;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  /* Buttons - Consistent text sizing */
+  button {
+    @apply text-base;
+    font-size: 1rem;
+    line-height: 1.5;
+    font-family: inherit;
+  }
+
+  /* Remove default margins from headings in specific contexts */
+  h1:first-child,
+  h2:first-child,
+  h3:first-child,
+  h4:first-child,
+  h5:first-child,
+  h6:first-child {
+    margin-top: 0;
   }
 
   /* Smooth transitions for ALL elements */
@@ -316,18 +453,49 @@
 /* Mobile-first responsive breakpoints */
 /* sm: 640px, md: 768px, lg: 1024px, xl: 1280px, 2xl: 1536px */
 
-/* Ensure all text is readable on mobile */
+/* Typography Utilities - Consistent responsive scaling */
 @layer utilities {
+  /* Base text with consistent responsive scaling */
   .text-responsive {
-    @apply text-sm sm:text-base md:text-lg;
+    @apply text-base sm:text-base md:text-base;
+    font-size: 1rem; /* 16px base, consistent across breakpoints */
+    line-height: 1.5;
   }
 
+  /* Heading with consistent scale */
   .heading-responsive {
-    @apply text-xl sm:text-2xl md:text-3xl lg:text-4xl;
+    @apply text-3xl sm:text-4xl md:text-5xl lg:text-6xl;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
   }
 
+  /* Subheading with consistent scale */
   .subheading-responsive {
-    @apply text-lg sm:text-xl md:text-2xl;
+    @apply text-xl sm:text-2xl md:text-3xl lg:text-4xl;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  /* Small text utility - replaces text-[10px], text-[11px] */
+  .text-extra-small {
+    @apply text-xs;
+    font-size: 0.75rem; /* 12px */
+    line-height: 1.5;
+  }
+
+  /* Standard small text */
+  .text-small {
+    @apply text-sm;
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.5;
+  }
+
+  /* Standard base text */
+  .text-base-standard {
+    @apply text-base;
+    font-size: 1rem; /* 16px */
+    line-height: 1.5;
   }
 }
 
@@ -388,17 +556,36 @@
    MOBILE OPTIMIZATIONS
    =================================== */
 
-/* Prevent zoom on input focus (iOS) */
+/* Prevent zoom on input focus (iOS) - Maintain consistent font size */
 @media screen and (max-width: 640px) {
-
   input[type="text"],
   input[type="email"],
   input[type="password"],
   input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
   textarea,
   select {
-    font-size: 16px !important;
-    /* Prevents iOS zoom */
+    font-size: 16px !important; /* Prevents iOS zoom, matches base font size */
+    line-height: 1.5 !important;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Ensure proper container padding on mobile */
+  .container,
+  .container-responsive {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Better spacing for cards on mobile */
+  .card-responsive,
+  .bg-white,
+  [class*="rounded-"] {
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 }
 
@@ -417,6 +604,32 @@
   .interactive-list>* {
     margin-bottom: 0.75rem;
   }
+
+  /* Prevent horizontal overflow */
+  body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* Ensure containers don't overflow */
+  main,
+  section,
+  article {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Text wrapping improvements */
+  h1, h2, h3, h4, h5, h6 {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+
+  /* Ensure table containers scroll properly */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* ===================================
@@ -428,6 +641,12 @@
   /* Optimize for tablet view */
   .tablet-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Ensure proper text wrapping on tablets */
+  h1, h2, h3, h4, h5, h6 {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
 }
 
@@ -805,47 +1024,106 @@
    =================================== */
 .prose {
   max-width: none;
+  font-family: var(--font-inter), var(--font-sans);
+}
+
+.prose h1 {
+  @apply text-3xl sm:text-4xl md:text-5xl lg:text-6xl;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5em;
+  margin-top: 0;
 }
 
 .prose h2 {
-  @apply text-xl font-bold text-slate-900 mb-4 mt-8 first:mt-0;
+  @apply text-2xl sm:text-3xl md:text-4xl lg:text-5xl;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.5em;
+  margin-top: 2em;
 }
 
 .prose h3 {
-  @apply text-lg font-semibold text-slate-900 mb-3 mt-6;
+  @apply text-xl sm:text-2xl md:text-3xl lg:text-4xl;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 0.5em;
+  margin-top: 1.5em;
 }
 
 .prose h4 {
-  @apply text-base font-semibold text-slate-900 mb-2 mt-4;
+  @apply text-lg sm:text-xl md:text-2xl lg:text-3xl;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 0.5em;
+  margin-top: 1em;
+}
+
+.prose h5 {
+  @apply text-base sm:text-lg md:text-xl lg:text-2xl;
+  font-weight: 600;
+  line-height: 1.5;
+  margin-bottom: 0.5em;
+  margin-top: 1em;
+}
+
+.prose h6 {
+  @apply text-sm sm:text-base md:text-lg lg:text-xl;
+  font-weight: 600;
+  line-height: 1.5;
+  margin-bottom: 0.5em;
+  margin-top: 1em;
 }
 
 .prose p {
-  @apply text-sm md:text-base text-slate-600 mb-4 leading-relaxed;
+  @apply text-base;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 1em;
+  color: rgb(51 65 85);
 }
 
 .prose ul,
 .prose ol {
-  @apply text-sm md:text-base text-slate-600 space-y-2 mb-4;
+  @apply text-base;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 1em;
+  padding-left: 1.5em;
 }
 
 .prose li {
-  @apply text-sm md:text-base text-slate-700 leading-relaxed;
+  @apply text-base;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 0.5em;
 }
 
 .prose strong {
-  @apply font-semibold text-slate-900;
+  @apply font-semibold;
+  color: rgb(15 23 42);
 }
 
 .prose a {
-  @apply text-brand-green hover:underline font-medium;
+  @apply text-brand-green hover:text-emerald-600 hover:underline font-medium transition-colors duration-200;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .prose code {
-  @apply bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-sm;
+  @apply bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded;
+  font-size: 0.875rem;
+  font-family: var(--font-mono);
 }
 
 .prose blockquote {
-  @apply border-l-4 border-brand-green pl-4 italic text-slate-600;
+  @apply border-l-4 border-brand-green pl-4 italic bg-emerald-50/50 py-2;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgb(51 65 85);
+  margin: 1.5em 0;
 }
 
 /* Remove default prose margins for better control */
@@ -855,4 +1133,73 @@
 
 .prose :last-child {
   margin-bottom: 0;
+}
+
+/* Compact prose for policy pages - optimized smaller headings */
+.prose-compact h1 {
+  font-size: 1.5rem;
+  line-height: 1.3;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.75em;
+}
+
+@media (min-width: 768px) {
+  .prose-compact h1 {
+    font-size: 1.875rem;
+  }
+}
+
+.prose-compact h2 {
+  font-size: 1.25rem;
+  line-height: 1.4;
+  font-weight: 600;
+  margin: 1.5em 0 0.75em;
+}
+
+@media (min-width: 768px) {
+  .prose-compact h2 {
+    font-size: 1.5rem;
+  }
+}
+
+.prose-compact h3 {
+  font-size: 1.125rem;
+  line-height: 1.5;
+  font-weight: 600;
+  margin: 1.25em 0 0.5em;
+}
+
+@media (min-width: 768px) {
+  .prose-compact h3 {
+    font-size: 1.25rem;
+  }
+}
+
+.prose-compact h4 {
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 600;
+  margin: 1em 0 0.5em;
+}
+
+@media (min-width: 768px) {
+  .prose-compact h4 {
+    font-size: 1.125rem;
+  }
+}
+
+.prose-compact h5,
+.prose-compact h6 {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  font-weight: 600;
+  margin: 1em 0 0.5em;
+}
+
+@media (min-width: 768px) {
+  .prose-compact h5,
+  .prose-compact h6 {
+    font-size: 1rem;
+  }
 }

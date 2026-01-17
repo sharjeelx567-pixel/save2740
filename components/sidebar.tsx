@@ -264,7 +264,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                 key={item.label}
                 href={item.href}
                 onClick={onClose}
-                prefetch={true}
+                prefetch={false}
                 className={cn(
                   "flex items-center gap-3 px-1 sm:px-1.5 md:px-2 py-1.5 sm:py-2 md:py-3 rounded-lg md:rounded-xl transition-colors text-xs sm:text-sm md:text-base",
                   isActive ? "bg-emerald-50 text-brand-green font-medium shadow-sm" : "text-slate-500",

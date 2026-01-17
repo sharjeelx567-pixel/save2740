@@ -91,11 +91,11 @@ export function StatCards() {
               className={`w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 ${stat.iconColor}`}
             />
           </div>
-          <div className="text-center md:text-left w-full">
-            <p className="text-slate-500 text-xs sm:text-xs md:text-sm font-medium">
+          <div className="text-center md:text-left w-full min-w-0">
+            <p className="text-slate-500 text-xs sm:text-xs md:text-sm font-medium truncate">
               {stat.label}
             </p>
-            <p className="text-lg sm:text-xl md:text-2xl font-bold text-slate-800">
+            <p className="text-lg sm:text-xl md:text-2xl font-bold text-slate-800 break-words">
               {stat.value}
             </p>
           </div>

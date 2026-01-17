@@ -1,40 +1,59 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server';
+import connectToDatabase from '@/lib/mongodb';
+import { Group } from '@/lib/models/group.model';
+import { generateJoinCode, generateReferralLink } from '@/lib/utils/group-utils';
+import jwt from 'jsonwebtoken';
 
-/**
- * Groups API Route
- * POST /api/groups - Create a new group
- * GET /api/groups - Get all groups for the current user
- */
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Generate unique referral code
-function generateReferralCode(): string {
-  return Math.random().toString(36).substring(2, 8).toUpperCase()
-}
+// Helper to verify JWT and get user info
+async function getUserFromToken(request: NextRequest) {
+  try {
+    const token = request.cookies.get('token')?.value;
+    if (!token) return null;
 
-// Generate referral link
-function generateReferralLink(code: string): string {
-  return `${process.env.NEXT_PUBLIC_APP_URL || 'https://save2740.app'}/join/${code}`
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      userId: string;
+      email?: string;
+      name?: string;
+      role?: string
+    };
+    return decoded;
+  } catch (error) {
+    return null;
+  }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    await connectToDatabase();
+
+    const user = await getUserFromToken(request);
+    if (!user) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
-      )
+      );
     }
 
-    const body = await request.json()
-    const { groupName, purpose, contributionAmount, frequency } = body
+    const body = await request.json();
+    const {
+      groupName,
+      purpose,
+      contributionAmount,
+      frequency,
+      currency = 'USD',
+      maxMembers = 10,
+      payoutOrderRule = 'as-joined',
+      rules = ''
+    } = body;
 
     // Validate required fields
     if (!groupName || !purpose || !contributionAmount || !frequency) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }
-      )
+      );
     }
 
     // Validate frequency
@@ -42,40 +61,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'Invalid frequency' },
         { status: 400 }
-      )
+      );
     }
 
     // Validate contribution amount
-    const amount = parseFloat(contributionAmount)
+    const amount = parseFloat(contributionAmount);
     if (isNaN(amount) || amount <= 0) {
       return NextResponse.json(
         { success: false, error: 'Invalid contribution amount' },
         { status: 400 }
-      )
+      );
     }
 
-    // Generate referral code and link
-    const referralCode = generateReferralCode()
-    const referralLink = generateReferralLink(referralCode)
+    const joinCode = generateJoinCode();
+    const referralLink = generateReferralLink(joinCode);
 
-    // Create group object (replace with database save in production)
-    const newGroup = {
-      id: `group-${Date.now()}`,
+    // Create new group
+    const newGroup = await Group.create({
       name: groupName,
       purpose,
+      currency,
       contributionAmount: amount,
       frequency,
-      referralCode,
+      maxMembers: Math.max(2, parseInt(maxMembers.toString())),
+      payoutOrderRule,
+      rules,
+      status: 'open',
+      joinCode,
       referralLink,
-      members: [],
-      balance: 0,
-      totalContributed: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-
-    // In production: Save to database
-    // await db.groups.create(newGroup)
+      creatorId: user.userId,
+      creatorEmail: user.email || '',
+      startDate: new Date(),
+      currentMembers: 1,
+      members: [{
+        userId: user.userId,
+        name: user.name || 'Creator',
+        email: user.email || '',
+        joinedAt: new Date(),
+        totalContributed: 0,
+        payoutPosition: 1 // Creator is always #1 initially
+      }]
+    });
 
     return NextResponse.json(
       {
@@ -84,58 +110,48 @@ export async function POST(request: NextRequest) {
         data: newGroup,
       },
       { status: 201 }
-    )
+    );
   } catch (error) {
-    console.error('Error creating group:', error)
+    console.error('Error creating group:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to create group' },
       { status: 500 }
-    )
+    );
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    await connectToDatabase();
+
+    const user = await getUserFromToken(request);
+    if (!user) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
-      )
+      );
     }
 
-    // In production: Fetch from database filtered by user ID
-    // const groups = await db.groups.find({ creatorId: userId })
-
-    // Mock data for now
-    const mockGroups = [
-      {
-        id: 'group-1',
-        name: 'Friends Circle',
-        purpose: 'Quarterly vacation fund',
-        contributionAmount: 27.40,
-        frequency: 'weekly',
-        referralCode: 'FC2024',
-        referralLink: 'https://save2740.app/join/FC2024',
-        balance: 1096,
-        totalContributed: 2192,
-        members: 4,
-        createdAt: '2024-01-15',
-      },
-    ]
+    // Find groups where user is creator OR member
+    const groups = await Group.find({
+      $or: [
+        { creatorId: user.userId },
+        { 'members.userId': user.userId }
+      ]
+    }).sort({ createdAt: -1 });
 
     return NextResponse.json(
       {
         success: true,
-        data: mockGroups,
+        data: groups,
       },
       { status: 200 }
-    )
+    );
   } catch (error) {
-    console.error('Error fetching groups:', error)
+    console.error('Error fetching groups:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch groups' },
       { status: 500 }
-    )
+    );
   }
 }

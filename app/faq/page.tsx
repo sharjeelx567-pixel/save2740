@@ -168,7 +168,7 @@ function FAQContent() {
                                         const isExpanded = expandedIndex === globalIndex
 
                                         return (
-                                            <Card key={qIndex} className="border-none shadow-sm rounded-xl overflow-hidden">
+                                            <Card key={qIndex} className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden hover:border-brand-green/30 transition-colors">
                                                 <button
                                                     onClick={() => setExpandedIndex(isExpanded ? null : globalIndex)}
                                                     className="w-full text-left"
@@ -193,7 +193,7 @@ function FAQContent() {
                                 </div>
                             ))
                         ) : (
-                            <Card className="border-none shadow-sm rounded-xl">
+                            <Card className="border border-slate-200 shadow-sm rounded-2xl">
                                 <CardContent className="p-8 text-center">
                                     <p className="text-slate-600">No questions match your search. Try different keywords.</p>
                                 </CardContent>
@@ -201,7 +201,7 @@ function FAQContent() {
                         )}
 
                         {/* Still have questions */}
-                        <Card className="border-2 border-brand-green bg-brand-green/5 rounded-xl">
+                        <Card className="border-2 border-brand-green bg-emerald-50 rounded-2xl">
                             <CardContent className="p-8 text-center">
                                 <h3 className="text-xl font-bold text-slate-900 mb-3">Still have questions?</h3>
                                 <p className="text-slate-700 mb-6">
@@ -209,7 +209,7 @@ function FAQContent() {
                                 </p>
                                 <button
                                     onClick={() => window.location.href = '/contact'}
-                                    className="bg-brand-green hover:bg-brand-green/90 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                                    className="bg-brand-green hover:bg-emerald-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
                                 >
                                     Contact Support
                                 </button>

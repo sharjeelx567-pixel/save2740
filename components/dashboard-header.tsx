@@ -59,13 +59,13 @@ export function DashboardHeader({ title = "Dashboard", onMenuClick }: DashboardH
             </div>
 
             {/* Right side - Controls */}
-            <div className="flex items-center gap-1 sm:gap-2 md:gap-3 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 md:gap-3 shrink-0 flex-wrap sm:flex-nowrap">
               {/* Auto-save / Manual Toggle */}
-              <div className="bg-slate-50 rounded-full p-0.5 sm:p-1 flex items-center shadow-sm border border-slate-200">
-                <button className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs md:text-sm font-medium bg-white text-brand-green whitespace-nowrap transition-colors shadow-sm">
+              <div className="bg-slate-50 rounded-full p-0.5 sm:p-1 flex items-center shadow-sm border border-slate-200 shrink-0">
+                <button className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-xs md:text-sm font-medium bg-white text-brand-green whitespace-nowrap transition-colors shadow-sm">
                   Auto-save
                 </button>
-                <button className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs md:text-sm font-medium text-slate-500 whitespace-nowrap transition-colors">
+                <button className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-xs md:text-sm font-medium text-slate-500 whitespace-nowrap transition-colors">
                   Manual
                 </button>
               </div>
@@ -78,7 +78,7 @@ export function DashboardHeader({ title = "Dashboard", onMenuClick }: DashboardH
                 <Bell className="w-5 h-5 sm:w-5 md:w-6 text-slate-600" />
                 {unreadCount > 0 && (
                   <div className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
-                    <span className="text-[10px] font-bold text-white px-0.5">{unreadCount}</span>
+                    <span className="text-xs font-bold text-white px-0.5">{unreadCount}</span>
                   </div>
                 )}
               </button>

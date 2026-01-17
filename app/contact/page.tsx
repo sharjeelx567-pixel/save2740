@@ -60,7 +60,7 @@ function ContactContent() {
 
                         <div className="grid md:grid-cols-2 gap-6 mb-8">
                             {/* Contact Info */}
-                            <Card className="border-none shadow-sm rounded-2xl">
+                            <Card className="border border-slate-200 shadow-sm rounded-2xl hover:border-brand-green/30 transition-colors">
                                 <CardContent className="p-6">
                                     <h2 className="text-xl font-bold text-slate-900 mb-6">Contact Information</h2>
 
@@ -107,7 +107,7 @@ function ContactContent() {
                             </Card>
 
                             {/* Quick Links */}
-                            <Card className="border-none shadow-sm rounded-2xl">
+                            <Card className="border border-slate-200 shadow-sm rounded-2xl hover:border-brand-green/30 transition-colors">
                                 <CardContent className="p-6">
                                     <h2 className="text-xl font-bold text-slate-900 mb-6">Quick Help</h2>
 
@@ -149,12 +149,12 @@ function ContactContent() {
                         </div>
 
                         {/* Contact Form */}
-                        <Card className="border-none shadow-sm rounded-2xl">
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl">
                             <CardContent className="p-6 md:p-8">
                                 <h2 className="text-2xl font-bold text-slate-900 mb-6">Send us a Message</h2>
 
                                 {submitted && (
-                                    <div className="mb-6 p-4 bg-brand-green/10 border border-brand-green/20 rounded-lg">
+                                    <div className="mb-6 p-4 bg-emerald-50 border border-brand-green rounded-lg">
                                         <p className="text-brand-green font-semibold">✓ Message sent successfully! We'll get back to you soon.</p>
                                     </div>
                                 )}
@@ -231,7 +231,7 @@ function ContactContent() {
                                     <button
                                         type="submit"
                                         disabled={isSubmitting}
-                                        className="w-full bg-brand-green hover:bg-brand-green/90 disabled:opacity-50 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                                        className="w-full bg-brand-green hover:bg-emerald-600 disabled:opacity-50 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
                                     >
                                         {isSubmitting ? (
                                             "Sending..."

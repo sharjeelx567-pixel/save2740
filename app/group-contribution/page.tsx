@@ -37,8 +37,13 @@ interface Group {
   contributionAmount: number
   frequency: "daily" | "weekly" | "monthly"
   maxMembers: number
+  currency?: string
+  payoutOrderRule?: string
+  rules?: string
+  joinCode?: string
   isLocked: boolean
   startDate: string | null
+  closingDate: string | null
   endDate: string | null
   referralCode: string
   referralLink: string
@@ -50,7 +55,7 @@ interface Group {
 
 function GroupContributionPageContent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [view, setView] = useState<"list" | "create" | "detail">("list")
+  const [view, setView] = useState<"list" | "create" | "detail" | "join">("list")
   const [groups, setGroups] = useState<Group[]>([])
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
   const [loading, setLoading] = useState(false)
@@ -64,7 +69,11 @@ function GroupContributionPageContent() {
     purpose: "",
     contributionAmount: "",
     frequency: "weekly" as "daily" | "weekly" | "monthly",
-    maxMembers: "10", // Fixed at 10 for 1-year cycle
+    maxMembers: "10",
+    currency: "USD",
+    payoutOrderRule: "as-joined",
+    rules: "",
+    closingDate: "",
   })
 
   const [contributionData, setContributionData] = useState({
@@ -204,8 +213,12 @@ function GroupContributionPageContent() {
         contributionAmount: parseFloat(formData.contributionAmount),
         frequency: formData.frequency,
         maxMembers: parseInt(formData.maxMembers),
+        currency: formData.currency,
+        payoutOrderRule: formData.payoutOrderRule,
+        rules: formData.rules,
         isLocked: false,
-        startDate: null,
+        startDate: new Date().toISOString(),
+        closingDate: new Date(formData.closingDate).toISOString(),
         endDate: null,
         referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
         referralLink: `https://save2740.app/join/${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
@@ -232,6 +245,10 @@ function GroupContributionPageContent() {
         contributionAmount: "",
         frequency: "weekly",
         maxMembers: "10",
+        currency: "USD",
+        payoutOrderRule: "as-joined",
+        rules: "",
+        closingDate: "",
       })
       toast({
         title: "Group Created!",
@@ -509,7 +526,7 @@ function GroupContributionPageContent() {
                         className="flex items-center gap-2 bg-brand-green hover:bg-brand-green/90 text-dark-navy px-4 py-2 rounded-lg font-semibold transition-colors"
                       >
                         <Plus className="w-5 h-5" />
-                        Create Group
+                        New Group
                       </button>
                     </div>
 
@@ -565,12 +582,29 @@ function GroupContributionPageContent() {
                   ← Back to Groups
                 </button>
 
-                <Card className="bg-dark-navy text-white border-none overflow-hidden rounded-2xl p-6 md:p-10 mb-6">
-                  <CardContent className="p-0">
-                    <h2 className="text-2xl md:text-3xl font-bold mb-2">Create a New Group</h2>
-                    <p className="text-slate-400">Set up your group contribution plan and start saving together</p>
-                  </CardContent>
-                </Card>
+                <div className="flex gap-4 mb-6">
+                  <button
+                    onClick={() => setView("create")}
+                    className={`flex-1 py-3 rounded-lg font-semibold transition-colors ${view === "create" ? "bg-brand-green text-dark-navy" : "bg-white text-slate-600 border border-slate-200"}`}
+                  >
+                    Create Group
+                  </button>
+                  <button
+                    onClick={() => setView("join")}
+                    className={`flex-1 py-3 rounded-lg font-semibold transition-colors ${view === "join" ? "bg-brand-green text-dark-navy" : "bg-white text-slate-600 border border-slate-200"}`}
+                  >
+                    Join Group
+                  </button>
+                </div>
+
+                {view === "create" && (
+                  <Card className="bg-dark-navy text-white border-none overflow-hidden rounded-2xl p-6 md:p-10 mb-6">
+                    <CardContent className="p-0">
+                      <h2 className="text-2xl md:text-3xl font-bold mb-2">Create a New Group</h2>
+                      <p className="text-slate-400">Set up your group contribution plan and start saving together</p>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <Card className="border-none shadow-sm rounded-2xl p-6">
                   <CardContent className="p-0">
@@ -605,7 +639,7 @@ function GroupContributionPageContent() {
                           <input
                             type="number"
                             step="0.01"
-                            min="100"
+                            min="10"
                             max="5000"
                             required
                             value={formData.contributionAmount}
@@ -613,7 +647,7 @@ function GroupContributionPageContent() {
                             placeholder="27.40"
                             className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green"
                           />
-                          <p className="text-xs text-slate-500 mt-1">Min: $100, Max: $5,000</p>
+                          <p className="text-xs text-slate-500 mt-1">Min: $10, Max: $5,000</p>
                         </div>
 
                         <div>
@@ -627,8 +661,87 @@ function GroupContributionPageContent() {
                             <option value="weekly">Weekly</option>
                             <option value="monthly">Monthly</option>
                           </select>
-                          <p className="text-xs text-slate-500 mt-1">Group automatically locks at 10 members</p>
+                          <p className="text-xs text-slate-500 mt-1">Group automatically locks at selected max members</p>
                         </div>
+                      </div>
+
+                      {/* New Fields */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-900 mb-2">Max Members</label>
+                          <input
+                            type="number"
+                            min="2"
+                            max="50"
+                            required
+                            value={formData.maxMembers}
+                            onChange={(e) => setFormData({ ...formData, maxMembers: e.target.value })}
+                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">Default: 10</p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-900 mb-2">Currency</label>
+                          <select
+                            value={formData.currency}
+                            onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green"
+                          >
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-900 mb-2">Start Date</label>
+                          <input
+                            type="text"
+                            readOnly
+                            value={new Date().toLocaleDateString()}
+                            className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-500"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">Automatically set to today</p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-900 mb-2">Closing Date (Strict Lock)</label>
+                          <input
+                            type="date"
+                            required
+                            min={new Date().toISOString().split('T')[0]}
+                            value={formData.closingDate}
+                            onChange={(e) => setFormData({ ...formData, closingDate: e.target.value })}
+                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">Group PERMANENTLY locks on this date.</p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-900 mb-2">Payout Order Rule</label>
+                          <select
+                            value={formData.payoutOrderRule}
+                            onChange={(e) => setFormData({ ...formData, payoutOrderRule: e.target.value })}
+                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green"
+                          >
+                            <option value="as-joined">As joined</option>
+                            <option value="random">Random</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-900 mb-2">Rules / Notes</label>
+                        <textarea
+                          value={formData.rules}
+                          onChange={(e) => setFormData({ ...formData, rules: e.target.value })}
+                          placeholder="Example: Payment due by Friday 6pm. Late fee $2. Payout delayed if less than 80% paid."
+                          rows={3}
+                          className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green resize-none"
+                        />
                       </div>
 
                       <button
@@ -673,22 +786,31 @@ function GroupContributionPageContent() {
                     </div>
 
                     {/* Show dates if group is locked */}
-                    {selectedGroup.isLocked && selectedGroup.startDate && selectedGroup.endDate && (
+                    {/* Show dates if group is locked OR has closing date */}
+                    {(selectedGroup.isLocked || selectedGroup.closingDate) && (
                       <div className="border-t border-slate-700 pt-4 mb-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div>
                             <p className="text-slate-400 text-xs mb-1">Start Date</p>
                             <p className="text-white font-semibold flex items-center gap-2">
-                              <Calendar className="w-4 h-4" />
-                              {new Date(selectedGroup.startDate).toLocaleDateString()}
+                              {selectedGroup.startDate ? new Date(selectedGroup.startDate).toLocaleDateString() : 'Pending'}
                             </p>
                           </div>
                           <div>
-                            <p className="text-slate-400 text-xs mb-1">End Date</p>
-                            <p className="text-white font-semibold flex items-center gap-2">
-                              <Calendar className="w-4 h-4" />
-                              {new Date(selectedGroup.endDate).toLocaleDateString()}
+                            <p className="text-slate-400 text-xs mb-1">Closing Date</p>
+                            <p className="text-amber-300 font-semibold flex items-center gap-2">
+                              {selectedGroup.closingDate ? new Date(selectedGroup.closingDate).toLocaleDateString() : 'N/A'}
                             </p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400 text-xs mb-1">Status</p>
+                            {new Date() > new Date(selectedGroup.closingDate!) ? (
+                              <span className="text-red-400 font-bold uppercase text-xs">Closed</span>
+                            ) : selectedGroup.members.length >= selectedGroup.maxMembers ? (
+                              <span className="text-amber-400 font-bold uppercase text-xs">Full</span>
+                            ) : (
+                              <span className="text-green-400 font-bold uppercase text-xs">Open</span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -798,39 +920,52 @@ function GroupContributionPageContent() {
                     <Card className="border-none shadow-sm rounded-2xl p-6 bg-white">
                       <CardContent className="p-0">
                         <h3 className="text-lg font-bold text-slate-900 mb-4">Make a Contribution</h3>
+
+                        {!selectedGroup.isLocked && (
+                          <div className="mb-6 p-4 bg-blue-50 text-blue-800 rounded-xl flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-bold">Contributions Paused</p>
+                              <p className="text-sm mt-1">Contributions will begin when all {selectedGroup.maxMembers} members have joined. Currently {selectedGroup.members.length}/{selectedGroup.maxMembers}.</p>
+                            </div>
+                          </div>
+                        )}
+
                         <form onSubmit={handleContribute} className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-semibold text-slate-900 mb-2">Amount ($)</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              required
-                              value={contributionData.amount}
-                              onChange={(e) => setContributionData({ ...contributionData, amount: e.target.value })}
-                              placeholder={selectedGroup.contributionAmount.toString()}
-                              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green"
-                            />
-                          </div>
+                          <fieldset disabled={!selectedGroup.isLocked} className="space-y-4 opacity-100 disabled:opacity-50">
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-900 mb-2">Amount ($)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                required
+                                value={contributionData.amount}
+                                onChange={(e) => setContributionData({ ...contributionData, amount: e.target.value })}
+                                placeholder={selectedGroup.contributionAmount.toString()}
+                                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green"
+                              />
+                            </div>
 
-                          <div>
-                            <label className="block text-sm font-semibold text-slate-900 mb-2">Note (Optional)</label>
-                            <input
-                              type="text"
-                              value={contributionData.description}
-                              onChange={(e) => setContributionData({ ...contributionData, description: e.target.value })}
-                              placeholder="e.g., Weekly savings"
-                              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green"
-                            />
-                          </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-900 mb-2">Note (Optional)</label>
+                              <input
+                                type="text"
+                                value={contributionData.description}
+                                onChange={(e) => setContributionData({ ...contributionData, description: e.target.value })}
+                                placeholder="e.g., Weekly savings"
+                                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green"
+                              />
+                            </div>
 
-                          <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-brand-green hover:bg-brand-green/90 text-dark-navy px-6 py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                          >
-                            <Send className="w-5 h-5" />
-                            Contribute Now
-                          </button>
+                            <button
+                              type="submit"
+                              disabled={loading}
+                              className="w-full bg-brand-green hover:bg-brand-green/90 text-dark-navy px-6 py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                              <Send className="w-5 h-5" />
+                              Contribute Now
+                            </button>
+                          </fieldset>
                         </form>
                       </CardContent>
                     </Card>
@@ -854,7 +989,13 @@ function GroupContributionPageContent() {
 
                           <div>
                             <p className="text-slate-500 text-sm mb-1">Group status</p>
-                            <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">Active</span>
+                            {new Date() > new Date(selectedGroup.closingDate!) ? (
+                              <span className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-semibold">Closed</span>
+                            ) : selectedGroup.members.length >= selectedGroup.maxMembers ? (
+                              <span className="inline-block bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-semibold">Full</span>
+                            ) : (
+                              <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">Open</span>
+                            )}
                           </div>
                         </div>
                       </CardContent>

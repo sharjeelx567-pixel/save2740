@@ -51,7 +51,18 @@ export async function POST(request: NextRequest) {
     })
 
     // Send OTP via email
-    await sendPasswordResetOTP(email, otp)
+    const emailSent = await sendPasswordResetOTP(email, otp)
+    
+    // Always log OTP to console for development/testing
+    // This helps when email is not configured or fails
+    console.log('\n' + '='.repeat(50))
+    console.log('🔐 PASSWORD RESET OTP')
+    console.log('='.repeat(50))
+    console.log(`📧 Email: ${email}`)
+    console.log(`🔑 OTP: ${otp}`)
+    console.log(`⏰ Expires: ${expiresAt.toLocaleString()}`)
+    console.log(`📱 Status: ${emailSent ? '✅ Email sent' : '❌ Email failed - use OTP above'}`)
+    console.log('='.repeat(50) + '\n')
 
     return NextResponse.json(
       { success: true, message: 'OTP sent to your email' },

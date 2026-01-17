@@ -1,142 +1,109 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server';
+import connectToDatabase from '@/lib/mongodb';
+import { Group } from '@/lib/models/group.model';
+import { isGroupReadyForContributions } from '@/lib/utils/group-utils';
+import jwt from 'jsonwebtoken';
 
-/**
- * Group Contribution API Route
- * POST /api/groups/[groupId]/contribute - Record a contribution and update wallet
- * GET /api/groups/[groupId]/transactions - Get all transactions for a group
- */
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Helper to verify JWT
+async function getUserFromToken(request: NextRequest) {
+  try {
+    const token = request.cookies.get('token')?.value;
+    if (!token) return null;
+    return jwt.verify(token, JWT_SECRET) as { userId: string };
+  } catch (error) {
+    return null;
+  }
+}
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { groupId: string } }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    await connectToDatabase();
+
+    const user = await getUserFromToken(request);
+    if (!user) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
-      )
+      );
     }
 
-    const groupId = params.groupId
-    const body = await request.json()
-    const { memberId, amount, description } = body
+    const { groupId } = params;
+    const body = await request.json();
+    const { amount, note } = body;
 
-    // Validate contribution amount
-    if (!amount || parseFloat(amount) <= 0) {
+    const group = await Group.findById(groupId);
+
+    if (!group) {
       return NextResponse.json(
-        { success: false, error: 'Invalid contribution amount' },
-        { status: 400 }
-      )
+        { success: false, error: 'Group not found' },
+        { status: 404 }
+      );
     }
 
-    const contributionAmount = parseFloat(amount)
+    // Check if user is a member
+    const memberIndex = group.members.findIndex(
+      (m: any) => m.userId.toString() === user.userId
+    );
 
-    // In production:
-    // 1. Verify member belongs to group
-    // 2. Create transaction record
-    // 3. Update group balance
-    // 4. Update member's wallet balance
-    // 5. Record in ledger for real-time updates
-
-    const transaction = {
-      id: `txn-${Date.now()}`,
-      groupId,
-      memberId: memberId || 'current-user',
-      amount: contributionAmount,
-      description: description || 'Group contribution',
-      type: 'contribution',
-      status: 'completed',
-      createdAt: new Date().toISOString(),
+    if (memberIndex === -1) {
+      return NextResponse.json(
+        { success: false, error: 'You are not a member of this group' },
+        { status: 403 }
+      );
     }
 
-    // Update wallet (in production, call wallet service)
-    const walletUpdate = {
-      userId: memberId || 'current-user',
-      previousBalance: 1000, // Mock previous balance
-      amount: contributionAmount,
-      newBalance: 1000 + contributionAmount,
-      transactionId: transaction.id,
-      description: `Group contribution to ${groupId}`,
-      timestamp: new Date().toISOString(),
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Contribution recorded successfully',
-        data: {
-          transaction,
-          walletUpdate,
+    // BLOCKING LOGIC: Check if group is filled/ready
+    if (!isGroupReadyForContributions(group)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Group is not yet filled. Contributions will start when all ${group.maxMembers} members have joined.`,
+          data: {
+            currentMembers: group.currentMembers,
+            maxMembers: group.maxMembers,
+            membersNeeded: group.maxMembers - group.currentMembers
+          }
         },
-      },
-      { status: 201 }
-    )
+        { status: 400 }
+      );
+    }
+
+    // Process contribution
+    // In a real app complexity, we would create a Transaction record here
+
+    // Update member contribution
+    group.members[memberIndex].totalContributed += parseFloat(amount);
+
+    // Update group totals
+    group.totalBalance += parseFloat(amount);
+    group.totalContributed += parseFloat(amount);
+
+    // Set status to active if it was just filled
+    if (group.status === 'filled') {
+      group.status = 'active';
+    }
+
+    await group.save();
+
+    return NextResponse.json({
+      success: true,
+      message: 'Contribution successful',
+      data: {
+        totalContributed: group.members[memberIndex].totalContributed,
+        groupBalance: group.totalBalance
+      }
+    });
+
   } catch (error) {
-    console.error('Error processing contribution:', error)
+    console.error('Error processing contribution:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to process contribution' },
       { status: 500 }
-    )
-  }
-}
-
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { groupId: string } }
-) {
-  try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    const groupId = params.groupId
-
-    // In production: Fetch transactions from database
-    // const transactions = await db.transactions.find({ groupId })
-
-    const mockTransactions = [
-      {
-        id: 'txn-1',
-        groupId,
-        memberId: 'm1',
-        memberName: 'John Doe',
-        amount: 27.40,
-        description: 'Weekly contribution',
-        type: 'contribution',
-        status: 'completed',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-      },
-      {
-        id: 'txn-2',
-        groupId,
-        memberId: 'm2',
-        memberName: 'Jane Smith',
-        amount: 27.40,
-        description: 'Weekly contribution',
-        type: 'contribution',
-        status: 'completed',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-      },
-    ]
-
-    return NextResponse.json(
-      {
-        success: true,
-        data: mockTransactions,
-      },
-      { status: 200 }
-    )
-  } catch (error) {
-    console.error('Error fetching transactions:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch transactions' },
-      { status: 500 }
-    )
+    );
   }
 }

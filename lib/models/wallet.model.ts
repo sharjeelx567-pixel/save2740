@@ -11,6 +11,16 @@ export interface IWallet extends Document {
   lastDailySavingDate?: Date;
   currentStreak: number;
   dailySavingAmount: number;
+  // External wallet integration
+  externalWalletId?: string; // ID from external wallet system
+  externalWalletBalance?: number; // Synced balance from external system
+  lastWalletSync?: Date;
+  walletTopUpUrl?: string; // Deep link to top-up page
+  // Wallet payment settings
+  walletPaymentEnabled: boolean;
+  autoTopUpEnabled: boolean;
+  autoTopUpThreshold?: number; // Auto top-up when balance falls below this
+  autoTopUpAmount?: number; // Amount to top-up automatically
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,6 +65,22 @@ const WalletSchema = new Schema<IWallet>(
       type: Number,
       default: 27.4,
     },
+    // External wallet integration
+    externalWalletId: String,
+    externalWalletBalance: Number,
+    lastWalletSync: Date,
+    walletTopUpUrl: String,
+    // Wallet payment settings
+    walletPaymentEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    autoTopUpEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    autoTopUpThreshold: Number,
+    autoTopUpAmount: Number,
   },
   { timestamps: true }
 );

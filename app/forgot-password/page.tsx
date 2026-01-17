@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle2, Mail } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -29,14 +31,18 @@ export default function ForgotPasswordPage() {
 
       if (!response.ok) {
         setError(data.error || 'Failed to process request');
+        setLoading(false);
         return;
       }
 
+      // Redirect to reset password page with email
       setSubmitted(true);
+      setTimeout(() => {
+        router.push(`/reset-password?email=${encodeURIComponent(email)}`);
+      }, 1500);
     } catch (err: any) {
       setError('An error occurred. Please try again.');
       console.error('Forgot password error:', err);
-    } finally {
       setLoading(false);
     }
   };
@@ -80,7 +86,7 @@ export default function ForgotPasswordPage() {
                   disabled={loading}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg transition"
                 >
-                  {loading ? 'Sending...' : 'Send Reset Link'}
+                  {loading ? 'Sending OTP...' : 'Send OTP to Email'}
                 </Button>
               </form>
 
@@ -93,7 +99,7 @@ export default function ForgotPasswordPage() {
                 </div>
               </div>
 
-              <Link href="/login">
+              <Link href="/auth/login">
                 <Button variant="outline" className="w-full border-gray-300 text-gray-700">
                   Back to Login
                 </Button>
@@ -110,12 +116,13 @@ export default function ForgotPasswordPage() {
               <Alert className="border-green-200 bg-green-50">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
                 <AlertDescription className="text-green-800">
-                  If an account exists with this email, a password reset link has been sent.
+                  If an account exists with this email, an OTP has been sent to your email address.
                 </AlertDescription>
               </Alert>
 
               <p className="text-sm text-gray-600">
-                Check your email inbox and follow the instructions to reset your password. The link expires in 1 hour.
+                Check your email inbox for the 6-digit OTP code. The OTP expires in 15 minutes.
+                Redirecting you to the reset password page...
               </p>
 
               <div className="space-y-2">
@@ -132,7 +139,7 @@ export default function ForgotPasswordPage() {
                 </Button>
               </div>
 
-              <Link href="/login">
+              <Link href="/auth/login">
                 <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                   Back to Login
                 </Button>

@@ -34,7 +34,7 @@ interface UseRealTimeWalletOptions {
   enabled?: boolean // enable/disable polling, default true
 }
 
-const DEFAULT_POLL_INTERVAL = 10000 // 10 seconds
+const DEFAULT_POLL_INTERVAL = 30000 // 30 seconds (reduced from 10s to minimize server load)
 
 export function useRealTimeWallet(options: UseRealTimeWalletOptions = {}) {
   const {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
-import { Save2740Plan } from '@/lib/models/save2740.model';
+import { SaverPocket } from '@/lib/models/saver-pocket';
 import jwt from 'jsonwebtoken';
 
 export async function GET(request: NextRequest) {
@@ -30,26 +30,43 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // Fetch all save2740 plans for the user
-    const plans = await Save2740Plan.find({ userId, status: 'active' }).lean();
+    // Fetch all saver pockets for the user
+    const pockets = await SaverPocket.find({ userId, status: 'active' }).sort({ createdAt: -1 }).lean();
 
-    const pockets = plans.map((plan: any) => ({
-      id: plan._id.toString(),
-      name: plan.name,
-      dailyContribution: (plan.dailyAmount || 0).toFixed(2),
-      multiplier: `x${plan.multiplier || 1}`,
-      saved: (plan.amountSaved || 0).toFixed(2),
-      progress: plan.targetAmount ? Math.min(100, Math.round((plan.amountSaved / plan.targetAmount) * 100)) : 0,
-      targetAmount: (plan.targetAmount || 0).toFixed(2),
-      startDate: plan.startDate,
-      endDate: plan.endDate,
-    }));
+    const formattedPockets = pockets.map((pocket: any) => {
+      const contributionAmount = pocket.mode === 'daily' 
+        ? pocket.baseAmount 
+        : pocket.baseAmount / 30; // Monthly amount converted to daily equivalent
+      const actualAmount = contributionAmount * pocket.multiplier;
+
+      return {
+        id: pocket._id.toString(),
+        name: pocket.name,
+        description: pocket.description,
+        multiplier: pocket.multiplier,
+        mode: pocket.mode,
+        contributionAmount: actualAmount.toFixed(2),
+        baseAmount: pocket.baseAmount,
+        saved: pocket.currentBalance.toFixed(2),
+        progress: pocket.targetAmount > 0 
+          ? Math.min(100, Math.round((pocket.currentBalance / pocket.targetAmount) * 100)) 
+          : 0,
+        targetAmount: pocket.targetAmount.toFixed(2),
+        startDate: pocket.startDate,
+        targetCompletionDate: pocket.targetCompletionDate,
+        completionDate: pocket.completionDate,
+        status: pocket.status,
+        autoFund: pocket.autoFund,
+        walletPaymentEnabled: pocket.walletPaymentEnabled,
+        subscriptionFee: pocket.subscriptionFee,
+      };
+    });
 
     return NextResponse.json({
       success: true,
       data: {
-        pockets,
-        total: pockets.length,
+        pockets: formattedPockets,
+        total: formattedPockets.length,
       },
     });
   } catch (error) {
@@ -88,44 +105,78 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { name, dailyAmount, multiplier, targetAmount } = await request.json();
+    const { 
+      name, 
+      description,
+      baseAmount, 
+      multiplier, 
+      mode,
+      targetAmount,
+      autoFund,
+      walletPaymentEnabled,
+      subscriptionFee
+    } = await request.json();
 
-    if (!name || !dailyAmount || !targetAmount) {
+    if (!name || !baseAmount || !targetAmount) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: name, baseAmount, targetAmount' },
         { status: 400 }
       );
     }
 
-    // Create new save2740 plan
+    // Validate multiplier (1-10)
+    const multiplierValue = Math.max(1, Math.min(10, parseInt(multiplier) || 1));
+    const modeValue = mode === 'monthly' ? 'monthly' : 'daily';
+
+    // Calculate target completion date based on mode
     const startDate = new Date();
-    const targetCompletionDate = new Date();
-    targetCompletionDate.setFullYear(targetCompletionDate.getFullYear() + 1); // 1 year from now
+    const baseDailyAmount = modeValue === 'daily' ? baseAmount : baseAmount / 30;
+    const actualDailyAmount = baseDailyAmount * multiplierValue;
+    const daysNeeded = Math.ceil(targetAmount / actualDailyAmount);
+    const targetCompletionDate = new Date(startDate);
+    targetCompletionDate.setDate(targetCompletionDate.getDate() + daysNeeded);
     
-    const newPlan = new Save2740Plan({
+    // Create new saver pocket
+    const newPocket = await SaverPocket.create({
       userId,
       name,
-      dailyAmount: parseFloat(dailyAmount),
-      multiplier: parseInt(multiplier) || 1,
+      description,
+      baseAmount: parseFloat(baseAmount),
+      multiplier: multiplierValue,
+      mode: modeValue,
       targetAmount: parseFloat(targetAmount),
-      totalTargetAmount: parseFloat(targetAmount),
-      amountSaved: 0,
-      savingsMode: 'daily',
-      targetCompletionDate,
+      currentBalance: 0,
       status: 'active',
       startDate,
+      targetCompletionDate,
+      totalContributions: 0,
+      contributionCount: 0,
+      autoFund: autoFund || false,
+      walletPaymentEnabled: walletPaymentEnabled !== false, // Default true
+      subscriptionFee: subscriptionFee ? parseFloat(subscriptionFee) : undefined,
     });
 
-    await newPlan.save();
+    const contributionAmount = modeValue === 'daily' 
+      ? newPocket.baseAmount 
+      : newPocket.baseAmount / 30;
+    const actualAmount = contributionAmount * newPocket.multiplier;
 
     const pocket = {
-      id: newPlan._id.toString(),
-      name: newPlan.name,
-      dailyContribution: (newPlan.dailyAmount || 0).toFixed(2),
-      multiplier: `x${newPlan.multiplier || 1}`,
-      saved: (newPlan.amountSaved || 0).toFixed(2),
+      id: newPocket._id.toString(),
+      name: newPocket.name,
+      description: newPocket.description,
+      multiplier: newPocket.multiplier,
+      mode: newPocket.mode,
+      contributionAmount: actualAmount.toFixed(2),
+      baseAmount: newPocket.baseAmount,
+      saved: newPocket.currentBalance.toFixed(2),
       progress: 0,
-      targetAmount: (newPlan.targetAmount || 0).toFixed(2),
+      targetAmount: newPocket.targetAmount.toFixed(2),
+      startDate: newPocket.startDate,
+      targetCompletionDate: newPocket.targetCompletionDate,
+      autoFund: newPocket.autoFund,
+      walletPaymentEnabled: newPocket.walletPaymentEnabled,
+      subscriptionFee: newPocket.subscriptionFee,
     };
 
     return NextResponse.json({

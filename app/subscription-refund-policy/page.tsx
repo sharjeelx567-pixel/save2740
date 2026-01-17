@@ -22,97 +22,44 @@ function SubscriptionRefundPolicyContent() {
                     <div className="max-w-4xl mx-auto space-y-6">
 
                         <div className="mb-8">
-                            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Subscription & Refund Policy</h1>
+                            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">Subscription & Refund Policy</h1>
                             <p className="text-slate-600">Last updated: January 8, 2026</p>
                         </div>
 
-                        <Card className="border-none shadow-sm rounded-2xl">
-                            <CardContent className="p-6 md:p-8 prose prose-slate max-w-none">
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl">
+                            <CardContent className="p-6 md:p-8 prose prose-slate prose-compact max-w-none">
 
                                 <h2>Premium Subscription</h2>
 
                                 <h3>1. Subscription Plans</h3>
-                                <p>Save2740 offers the following subscription options:</p>
                                 <ul>
-                                    <li><strong>Free Plan:</strong> Basic features, multipliers up to 5x, limited achievements</li>
+                                    <li><strong>Free:</strong> Basic features, multipliers up to 5x, limited achievements</li>
                                     <li><strong>Premium Monthly:</strong> $4.99/month - All features, unlimited multipliers, group challenges, priority support</li>
-                                    <li><strong>Premium Annual:</strong> $49.99/year (Save 17%) - All Premium features with annual billing</li>
+                                    <li><strong>Premium Annual:</strong> $49.99/year (Save 17%)</li>
                                 </ul>
 
                                 <h3>2. Premium Features</h3>
-                                <p>Premium subscribers get access to:</p>
-                                <ul>
-                                    <li>Multipliers from 1x to 10x (vs 1x-5x on free)</li>
-                                    <li>Unlimited group challenge participation</li>
-                                    <li>Unlimited free withdrawals (vs 3/month on free)</li>
-                                    <li>Advanced analytics and insights</li>
-                                    <li>Priority customer support (24-hour response time)</li>
-                                    <li>Exclusive badges and achievements</li>
-                                    <li>Early access to new features</li>
-                                    <li>Ad-free experience</li>
-                                </ul>
+                                <p>Multipliers 1x-10x (vs 1x-5x free), unlimited group challenges, unlimited free withdrawals (vs 3/month), advanced analytics, priority support (24-hour), exclusive badges, early feature access, ad-free.</p>
 
                                 <h3>3. Billing</h3>
-                                <ul>
-                                    <li><strong>Recurring Charges:</strong> Subscriptions renew automatically until canceled</li>
-                                    <li><strong>Payment Method:</strong> Charged to your default payment method on file</li>
-                                    <li><strong>Billing Cycle:</strong> Monthly subscribers billed every 30 days, annual every 365 days</li>
-                                    <li><strong>Price Changes:</strong> We'll notify you 30 days before any price changes</li>
-                                    <li><strong>Failed Payments:</strong> If billing fails, we'll retry 3 times over 7 days before suspending premium access</li>
-                                </ul>
+                                <p>Auto-renewal until canceled. Charged to default payment method. Monthly: every 30 days. Annual: every 365 days. Price changes: 30 days' notice. Failed payments: retry 3 times over 7 days before suspension.</p>
 
                                 <h3>4. Free Trial</h3>
-                                <ul>
-                                    <li>New users may receive a 7-day free trial</li>
-                                    <li>Cancel anytime during trial to avoid charges</li>
-                                    <li>After trial, standard subscription fees apply unless canceled</li>
-                                    <li>One free trial per user (based on email and payment method)</li>
-                                </ul>
+                                <p>7-day trial for new users. Cancel anytime during trial. One trial per user (email + payment method).</p>
 
                                 <h3>5. Cancellation</h3>
-                                <p><strong>How to Cancel:</strong></p>
-                                <ul>
-                                    <li>Go to Settings → Subscription → Cancel Subscription</li>
-                                    <li>Or email support@save2740.app with "Cancel Subscription" in the subject</li>
-                                    <li>Cancellation takes effect at the end of the current billing period</li>
-                                    <li>You retain premium access until the paid period ends</li>
-                                    <li>After cancellation, you'll revert to the free plan</li>
-                                </ul>
-
-                                <p><strong>No Partial Refunds:</strong> If you cancel mid-period, you won't receive a prorated refund, but you'll keep premium access through the end of your billing period.</p>
+                                <p>Cancel via Settings → Subscription or email support@save2740.app (subject: "Cancel Subscription"). Effect: end of billing period. Premium access retained until period ends. No partial refunds; access continues through paid period.</p>
 
                                 <h2>Refund Policy</h2>
 
                                 <h3>6. Subscription Refunds</h3>
-                                <p><strong>General Policy:</strong> Subscription fees are non-refundable except in the following cases:</p>
-
-                                <h4>Eligible for Refund:</h4>
-                                <ul>
-                                    <li><strong>Billing Error:</strong> Charged incorrectly (wrong amount, duplicate charge)</li>
-                                    <li><strong>Technical Issue:</strong> Premium features unavailable for 3+ consecutive days</li>
-                                    <li><strong>First-Time Subscribers:</strong> Request within 48 hours of first charge (one-time courtesy)</li>
-                                    <li><strong>Unauthorized Charge:</strong> Account was compromised</li>
-                                </ul>
-
-                                <h4>Not Eligible for Refund:</h4>
-                                <ul>
-                                    <li>Changed your mind after using premium features</li>
-                                    <li>Forgot to cancel before renewal</li>
-                                    <li>Didn't use premium features (voluntary choice)</li>
-                                    <li>Account suspended due to policy violations</li>
-                                </ul>
+                                <p><strong>General Policy:</strong> Non-refundable except: billing errors (wrong amount, duplicates), technical issues (premium features unavailable 3+ days), first-time subscribers (request within 48 hours, one-time), unauthorized charges (compromised account).</p>
+                                <p><strong>Not Eligible:</strong> Changed mind after using features, forgot to cancel before renewal, didn't use features voluntarily, account suspended for violations.</p>
 
                                 <h3>7. Wallet Contributions Refund Policy</h3>
-                                <p><strong>Important:</strong> Savings challenge contributions are NOT refundable once processed. This includes:</p>
-                                <ul>
-                                    <li>Daily, weekly, or monthly challenge contributions</li>
-                                    <li>Group contribution deposits</li>
-                                    <li>Manual wallet deposits</li>
-                                </ul>
-
-                                <p><strong>Alternative:</strong> You can withdraw your wallet balance at any time (subject to our withdrawal policy). Your savings remain accessible, just not refundable through the payment method.</p>
-
-                                <p><strong>Exception:</strong> Duplicate or erroneous charges due to technical errors will be refunded within 5-7 business days.</p>
+                                <p><strong>Important:</strong> Challenge contributions are NOT refundable once processed (daily/weekly/monthly contributions, group deposits, manual deposits).</p>
+                                <p><strong>Alternative:</strong> Withdraw wallet balance anytime (subject to withdrawal policy). Savings remain accessible.</p>
+                                <p><strong>Exception:</strong> Duplicate or erroneous technical errors refunded within 5-7 business days.</p>
 
                                 <h3>8. Group Challenge Refunds</h3>
                                 <ul>
@@ -123,73 +70,25 @@ function SubscriptionRefundPolicyContent() {
                                 </ul>
 
                                 <h3>9. How to Request a Refund</h3>
-                                <p>If you believe you're eligible for a refund:</p>
-                                <ol>
-                                    <li>Email refunds@save2740.app within 30 days of the charge</li>
-                                    <li>Include:
-                                        <ul>
-                                            <li>Your account email</li>
-                                            <li>Transaction ID or date of charge</li>
-                                            <li>Reason for refund request</li>
-                                            <li>Supporting documentation (if applicable)</li>
-                                        </ul>
-                                    </li>
-                                    <li>We'll review and respond within 5 business days</li>
-                                    <li>Approved refunds processed within 7-10 business days</li>
-                                </ol>
+                                <p>Email refunds@save2740.app within 30 days. Include: account email, transaction ID/date, reason, supporting documentation. Review: 5 business days. Processing: 7-10 business days.</p>
 
                                 <h3>10. Refund Methods</h3>
-                                <ul>
-                                    <li>Refunds issued to original payment method</li>
-                                    <li>If original method unavailable, credited to wallet balance</li>
-                                    <li>Processing time varies by payment method (3-10 business days)</li>
-                                </ul>
+                                <p>Refunds issued to original payment method (or wallet if unavailable). Processing: 3-10 business days.</p>
 
                                 <h3>11. Chargebacks</h3>
-                                <p>
-                                    <strong>Important:</strong> Filing a chargeback without contacting us first may result in account suspension. We're committed to resolving issues fairly - please contact support before disputing charges with your bank.
-                                </p>
-                                <p>
-                                    If you file a chargeback:
-                                </p>
-                                <ul>
-                                    <li>Your account will be suspended pending investigation</li>
-                                    <li>You may be required to provide documentation</li>
-                                    <li>If chargeback is unjustified, account may be permanently terminated</li>
-                                    <li>Outstanding wallet balance may be forfeited</li>
-                                </ul>
+                                <p><strong>Important:</strong> Contact us before filing chargebacks to avoid account suspension. Unjustified chargebacks may result in permanent termination and forfeiture of wallet balance.</p>
 
                                 <h3>12. Promotional Offers</h3>
-                                <ul>
-                                    <li>Promotional pricing and discounts are not retroactive</li>
-                                    <li>Offers cannot be combined unless explicitly stated</li>
-                                    <li>Promo codes expire as indicated</li>
-                                    <li>We reserve the right to modify or cancel promotions</li>
-                                </ul>
+                                <p>Promotional pricing not retroactive. Offers cannot be combined unless stated. Promo codes expire as indicated. We reserve right to modify or cancel promotions.</p>
 
                                 <h3>13. Changes to Subscription Plans</h3>
-                                <p>
-                                    We may modify subscription tiers, features, or pricing with 30 days' notice. Existing subscribers will be grandfathered on their current pricing for 6 months after changes.
-                                </p>
+                                <p>We may modify tiers, features, or pricing with 30 days' notice. Existing subscribers grandfathered at current pricing for 6 months.</p>
 
                                 <h3>14. Account Credits</h3>
-                                <p>
-                                    In lieu of refunds, we may offer account credits:
-                                </p>
-                                <ul>
-                                    <li>Credits applied to future subscription fees or wallet deposits</li>
-                                    <li>Credits do not expire</li>
-                                    <li>Non-transferable and cannot be exchanged for cash</li>
-                                    <li>Remaining credits forfeited if account is closed</li>
-                                </ul>
+                                <p>May be offered in lieu of refunds. Applied to future subscriptions/wallet deposits. Non-transferable, non-cashable, non-expiring. Forfeited if account closed.</p>
 
                                 <h3>15. Contact Us</h3>
-                                <p>For subscription or refund questions:</p>
-                                <p>
-                                    Email: refunds@save2740.app (for refund requests)<br />
-                                    Support: support@save2740.app (for billing questions)<br />
-                                    Phone: 1-800-SAVE-274
-                                </p>
+                                <p>Refunds: refunds@save2740.app | Billing: support@save2740.app | Phone: 1-800-SAVE-274</p>
 
                             </CardContent>
                         </Card>

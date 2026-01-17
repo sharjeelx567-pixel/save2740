@@ -61,7 +61,7 @@ const transactionSchema = new Schema<ITransaction>(
     },
     description: { type: String, required: true },
     merchantName: String,
-    transactionId: { type: String, required: true, unique: true, index: true },
+    transactionId: { type: String, required: true, unique: true }, // unique: true already creates an index
     authorizationCode: String,
     savingsPlanId: { type: String, index: true },
     relatedTransactionId: String,
@@ -85,7 +85,7 @@ const transactionSchema = new Schema<ITransaction>(
 // Create indexes
 transactionSchema.index({ userId: 1, createdAt: -1 });
 transactionSchema.index({ userId: 1, status: 1 });
-transactionSchema.index({ transactionId: 1 });
+// Note: transactionId index is automatically created by unique: true on line 64
 
 export const Transaction =
   mongoose.models.Transaction || mongoose.model<ITransaction>('Transaction', transactionSchema);

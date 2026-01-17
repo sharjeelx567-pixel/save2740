@@ -46,28 +46,38 @@ export async function connectDB(): Promise<Mongoose> {
       .connect(MONGODB_URI, opts)
       .then(async (mongooseInstance) => {
         // Fix duplicate key indexes on sparse fields if they exist
+        // Only log in development and only on first connection
+        const isFirstConnection = !global.mongooseCache?.conn;
         try {
           const usersCollection = mongooseInstance.connection.collection('users');
           const indexes = await usersCollection.getIndexes();
-          
-          console.log('Current indexes:', Object.keys(indexes));
           
           // Drop problematic unique indexes on sparse fields
           const problematicIndexes = ['phoneNumber_1', 'userId_1', 'referralCode_1', 'referredBy_1', 'kycStatus_1'];
           
           for (const indexName of problematicIndexes) {
             if (indexes[indexName]) {
-              console.log(`Dropping old ${indexName} index...`);
+              if (isFirstConnection && process.env.NODE_ENV === 'development') {
+                console.log(`[DB] Dropping old ${indexName} index...`);
+              }
               try {
                 await usersCollection.dropIndex(indexName);
-                console.log(`✓ Successfully dropped ${indexName} index`);
+                if (isFirstConnection && process.env.NODE_ENV === 'development') {
+                  console.log(`[DB] ✓ Successfully dropped ${indexName} index`);
+                }
               } catch (dropError) {
-                console.warn(`Failed to drop ${indexName}:`, (dropError as Error).message);
+                // Only log warnings in development
+                if (process.env.NODE_ENV === 'development') {
+                  console.debug(`[DB] Index ${indexName} already removed or doesn't exist`);
+                }
               }
             }
           }
         } catch (error) {
-          console.debug('Index inspection note:', (error as Error).message);
+          // Silently handle index inspection errors
+          if (process.env.NODE_ENV === 'development') {
+            console.debug('[DB] Index inspection:', (error as Error).message);
+          }
         }
         
         return mongooseInstance;

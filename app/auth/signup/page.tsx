@@ -322,17 +322,17 @@ export default function SignUpPage() {
             <div className="bg-gray-900 rounded-lg sm:rounded-xl md:rounded-2xl p-4 sm:p-5 md:p-8 mb-4 sm:mb-6 md:mb-8 text-white">
               <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-3 sm:gap-4 md:gap-6 text-center sm:text-left">
                 <div>
-                  <div className="text-[10px] sm:text-xs md:text-sm text-gray-400 mb-1">Your Commitment</div>
+                  <div className="text-xs sm:text-sm md:text-sm text-gray-400 mb-1">Your Commitment</div>
                   <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#10B981]">
                     ${dailyAmount.toFixed(2)}
                   </div>
-                  <div className="text-[10px] sm:text-xs md:text-sm text-gray-400 mt-1">per Day</div>
+                  <div className="text-xs sm:text-sm md:text-sm text-gray-400 mt-1">per Day</div>
                 </div>
                 <div className="text-center sm:text-right border-t sm:border-t-0 border-gray-800 pt-3 sm:pt-0 w-full sm:w-auto">
                   <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white">
                     ${currentChallenge.yearlyGoal.toLocaleString()}
                   </div>
-                  <div className="text-[10px] sm:text-xs md:text-sm text-gray-400 mt-1">Yearly Goal</div>
+                  <div className="text-xs sm:text-sm md:text-sm text-gray-400 mt-1">Yearly Goal</div>
                 </div>
               </div>
             </div>

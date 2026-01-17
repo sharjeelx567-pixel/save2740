@@ -78,40 +78,40 @@ export function MissedDayWarning() {
             <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 rounded-lg sm:rounded-xl p-2.5 sm:p-3 border border-orange-200/50">
               <div className="flex items-center gap-1 mb-1.5 sm:mb-2">
                 <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-orange-500" />
-                <span className="text-[10px] sm:text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                <span className="text-xs sm:text-xs font-semibold text-slate-700 uppercase tracking-wide">
                   Streak
                 </span>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-orange-600 leading-none">
                 {data?.currentStreak || 0}
               </p>
-              <p className="text-[10px] sm:text-xs text-slate-600 mt-1">days</p>
+              <p className="text-xs sm:text-xs text-slate-600 mt-1">days</p>
             </div>
 
             {/* Time Left */}
             <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-lg sm:rounded-xl p-2.5 sm:p-3 border border-amber-200/50">
               <div className="flex items-center gap-1 mb-1.5 sm:mb-2">
                 <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-600" />
-                <span className="text-[10px] sm:text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                <span className="text-xs sm:text-xs font-semibold text-slate-700 uppercase tracking-wide">
                   Time
                 </span>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-amber-600 leading-none">{hoursLeft}</p>
-              <p className="text-[10px] sm:text-xs text-slate-600 mt-1">hours</p>
+              <p className="text-xs sm:text-xs text-slate-600 mt-1">hours</p>
             </div>
 
             {/* Goal */}
             <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-lg sm:rounded-xl p-2.5 sm:p-3 border border-emerald-200/50">
               <div className="flex items-center gap-1 mb-1.5 sm:mb-2">
                 <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-brand-green" />
-                <span className="text-[10px] sm:text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                <span className="text-xs sm:text-xs font-semibold text-slate-700 uppercase tracking-wide">
                   Goal
                 </span>
               </div>
               <p className="text-lg sm:text-xl font-bold text-brand-green leading-none">
                 ${dailyAmount.toFixed(0)}
               </p>
-              <p className="text-[10px] sm:text-xs text-slate-600 mt-1">today</p>
+              <p className="text-xs sm:text-xs text-slate-600 mt-1">today</p>
             </div>
           </div>
 
@@ -123,7 +123,7 @@ export function MissedDayWarning() {
             <p className="text-3xl sm:text-4xl font-bold text-white mb-1">
               ${dailyAmount.toFixed(2)}
             </p>
-            <p className="text-[10px] sm:text-xs text-white/80">
+            <p className="text-xs sm:text-xs text-white/80">
               Save now to maintain your streak
             </p>
           </div>
@@ -137,7 +137,7 @@ export function MissedDayWarning() {
           {/* Encouragement */}
           <div className="flex items-start gap-2 bg-slate-50 rounded-lg p-2.5 sm:p-3">
             <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0 mt-0.5" />
-            <p className="text-[10px] sm:text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs sm:text-xs text-slate-600 leading-relaxed">
               Don't let your progress slip away! Keep your streak alive and stay on track with your savings goal.
             </p>
           </div>

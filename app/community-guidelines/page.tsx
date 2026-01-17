@@ -30,7 +30,7 @@ function CommunityGuidelinesContent() {
                         </div>
 
                         {/* Core Principles */}
-                        <Card className="border-none shadow-sm rounded-2xl">
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl">
                             <CardContent className="p-6 md:p-8">
                                 <div className="flex items-center gap-3 mb-6">
                                     <Heart className="w-8 h-8 text-brand-green" />
@@ -74,7 +74,7 @@ function CommunityGuidelinesContent() {
                         </Card>
 
                         {/* Group Contribution Guidelines */}
-                        <Card className="border-none shadow-sm rounded-2xl">
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl">
                             <CardContent className="p-6 md:p-8">
                                 <div className="flex items-center gap-3 mb-6">
                                     <Users className="w-8 h-8 text-brand-green" />
@@ -140,7 +140,7 @@ function CommunityGuidelinesContent() {
                         </Card>
 
                         {/* Referral Program Guidelines */}
-                        <Card className="border-none shadow-sm rounded-2xl">
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl">
                             <CardContent className="p-6 md:p-8">
                                 <div className="flex items-center gap-3 mb-6">
                                     <Shield className="w-8 h-8 text-brand-green" />
@@ -231,7 +231,7 @@ function CommunityGuidelinesContent() {
                         </Card>
 
                         {/* Enforcement */}
-                        <Card className="border-none shadow-sm rounded-2xl">
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl">
                             <CardContent className="p-6 md:p-8">
                                 <h2 className="text-2xl font-bold text-slate-900 mb-4">Guideline Enforcement</h2>
 
@@ -265,7 +265,7 @@ function CommunityGuidelinesContent() {
                         </Card>
 
                         {/* Updates */}
-                        <Card className="border-none shadow-sm rounded-2xl bg-slate-50">
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl bg-slate-50">
                             <CardContent className="p-6">
                                 <p className="text-slate-600 text-sm">
                                     <strong>Last updated:</strong> January 8, 2026<br />

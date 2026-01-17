@@ -89,7 +89,7 @@ export default function LoginPage() {
                 <Check size={14} className="text-white hidden sm:block md:hidden" strokeWidth={3} />
                 <Check size={18} className="text-white hidden md:block" strokeWidth={3} />
               </div>
-              <span className="text-[10px] sm:text-xs md:text-base text-gray-100 font-medium whitespace-nowrap">Streak Tracking</span>
+              <span className="text-xs sm:text-sm md:text-base text-gray-100 font-medium whitespace-nowrap">Streak Tracking</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
               <div className="w-4 h-4 sm:w-6 sm:h-6 md:w-8 md:h-8 rounded-full bg-[#10B981] flex items-center justify-center flex-shrink-0">
@@ -97,7 +97,7 @@ export default function LoginPage() {
                 <Check size={14} className="text-white hidden sm:block md:hidden" strokeWidth={3} />
                 <Check size={18} className="text-white hidden md:block" strokeWidth={3} />
               </div>
-              <span className="text-[10px] sm:text-xs md:text-base text-gray-100 font-medium whitespace-nowrap">Multipliers</span>
+              <span className="text-xs sm:text-sm md:text-base text-gray-100 font-medium whitespace-nowrap">Multipliers</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
               <div className="w-4 h-4 sm:w-6 sm:h-6 md:w-8 md:h-8 rounded-full bg-[#10B981] flex items-center justify-center flex-shrink-0">
@@ -105,7 +105,7 @@ export default function LoginPage() {
                 <Check size={14} className="text-white hidden sm:block md:hidden" strokeWidth={3} />
                 <Check size={18} className="text-white hidden md:block" strokeWidth={3} />
               </div>
-              <span className="text-[10px] sm:text-xs md:text-base text-gray-100 font-medium whitespace-nowrap">Secure Wallet</span>
+              <span className="text-xs sm:text-sm md:text-base text-gray-100 font-medium whitespace-nowrap">Secure Wallet</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
               <div className="w-4 h-4 sm:w-6 sm:h-6 md:w-8 md:h-8 rounded-full bg-[#10B981] flex items-center justify-center flex-shrink-0">
@@ -113,7 +113,7 @@ export default function LoginPage() {
                 <Check size={14} className="text-white hidden sm:block md:hidden" strokeWidth={3} />
                 <Check size={18} className="text-white hidden md:block" strokeWidth={3} />
               </div>
-              <span className="text-[10px] sm:text-xs md:text-base text-gray-100 font-medium whitespace-nowrap">Group Contribution</span>
+              <span className="text-xs sm:text-sm md:text-base text-gray-100 font-medium whitespace-nowrap">Group Contribution</span>
             </div>
           </div>
         </div>
@@ -190,12 +190,12 @@ export default function LoginPage() {
                 />
                 <span className="text-xs sm:text-sm text-gray-700">Remember me</span>
               </label>
-              <a
-                href="#"
+              <Link
+                href="/forgot-password"
                 className="text-xs sm:text-sm text-[#10B981] hover:text-[#0D8659] font-medium whitespace-nowrap"
               >
                 Forgot Password?
-              </a>
+              </Link>
             </div>
 
             {/* Sign In Button */}

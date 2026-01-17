@@ -1,69 +1,73 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server';
+import connectToDatabase from '@/lib/mongodb';
+import { Group } from '@/lib/models/group.model';
+import jwt from 'jsonwebtoken';
 
-/**
- * Group Detail API Route
- * GET /api/groups/[groupId] - Get group details
- * PUT /api/groups/[groupId] - Update group settings
- * DELETE /api/groups/[groupId] - Delete group
- * POST /api/groups/[groupId]/join - Join a group with referral code
- */
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Helper to verify JWT
+async function getUserFromToken(request: NextRequest) {
+  try {
+    const token = request.cookies.get('token')?.value;
+    if (!token) return null;
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    return decoded;
+  } catch (error) {
+    return null;
+  }
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { groupId: string } }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    await connectToDatabase();
+
+    const user = await getUserFromToken(request);
+    if (!user) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
-      )
+      );
     }
 
-    const groupId = params.groupId
+    const { groupId } = params;
 
-    // In production: Fetch from database
-    // const group = await db.groups.findById(groupId)
+    // Fetch group from database
+    const group = await Group.findById(groupId);
 
-    // Mock data
-    const mockGroup = {
-      id: groupId,
-      name: 'Friends Circle',
-      purpose: 'Quarterly vacation fund',
-      contributionAmount: 27.40,
-      frequency: 'weekly',
-      referralCode: 'FC2024',
-      referralLink: 'https://save2740.app/join/FC2024',
-      balance: 1096,
-      totalContributed: 2192,
-      members: [
-        {
-          id: 'm1',
-          name: 'John Doe',
-          email: 'john@example.com',
-          contributionAmount: 27.40,
-          totalContributed: 274,
-          joinedAt: '2024-01-15',
-        },
-      ],
-      createdAt: '2024-01-15',
-      updatedAt: new Date().toISOString(),
+    if (!group) {
+      return NextResponse.json(
+        { success: false, error: 'Group not found' },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: mockGroup,
-      },
-      { status: 200 }
-    )
+    // Check if user is a member or creator
+    const isMember = group.members.some(
+      (m: any) => m.userId.toString() === user.userId
+    );
+    const isCreator = group.creatorId.toString() === user.userId;
+
+    if (!isMember && !isCreator) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized access to group' },
+        { status: 403 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: group,
+    });
   } catch (error) {
-    console.error('Error fetching group:', error)
+    console.error('Error fetching group:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch group' },
       { status: 500 }
-    )
+    );
   }
 }
 
@@ -72,45 +76,61 @@ export async function PUT(
   { params }: { params: { groupId: string } }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    await connectToDatabase();
+
+    const user = await getUserFromToken(request);
+    if (!user) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
-      )
+      );
     }
 
-    const groupId = params.groupId
-    const body = await request.json()
+    const { groupId } = params;
+    const body = await request.json();
 
-    // Validate update fields
-    const allowedUpdates = ['name', 'purpose', 'frequency']
-    const updates = Object.keys(body).filter(key => allowedUpdates.includes(key))
+    const group = await Group.findById(groupId);
 
-    if (updates.length === 0) {
+    if (!group) {
       return NextResponse.json(
-        { success: false, error: 'No valid fields to update' },
-        { status: 400 }
-      )
+        { success: false, error: 'Group not found' },
+        { status: 404 }
+      );
     }
 
-    // In production: Update in database
-    // const updatedGroup = await db.groups.findByIdAndUpdate(groupId, body)
+    // Only creator can update settings
+    if (group.creatorId.toString() !== user.userId) {
+      return NextResponse.json(
+        { success: false, error: 'Only creator can update group settings' },
+        { status: 403 }
+      );
+    }
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Group updated successfully',
-        data: { id: groupId, ...body },
-      },
-      { status: 200 }
-    )
+    // Update allowed fields
+    const allowedUpdates = ['name', 'purpose', 'frequency', 'rules', 'payoutOrderRule'];
+
+    // Only allow updating rules/display fields if group is active
+    // Critical fields like amount/maxMembers shouldn't change after creation/joining started ideally
+    // But for MVP flexibility, we'll allow name/purpose updates always
+
+    if (body.name) group.name = body.name;
+    if (body.purpose) group.purpose = body.purpose;
+    if (body.rules) group.rules = body.rules;
+    if (body.payoutOrderRule) group.payoutOrderRule = body.payoutOrderRule;
+
+    await group.save();
+
+    return NextResponse.json({
+      success: true,
+      message: 'Group updated successfully',
+      data: group,
+    });
   } catch (error) {
-    console.error('Error updating group:', error)
+    console.error('Error updating group:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to update group' },
       { status: 500 }
-    )
+    );
   }
 }
 
@@ -119,31 +139,44 @@ export async function DELETE(
   { params }: { params: { groupId: string } }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    await connectToDatabase();
+
+    const user = await getUserFromToken(request);
+    if (!user) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
-      )
+      );
     }
 
-    const groupId = params.groupId
+    const { groupId } = params;
+    const group = await Group.findById(groupId);
 
-    // In production: Delete from database
-    // await db.groups.findByIdAndDelete(groupId)
+    if (!group) {
+      return NextResponse.json(
+        { success: false, error: 'Group not found' },
+        { status: 404 }
+      );
+    }
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Group deleted successfully',
-      },
-      { status: 200 }
-    )
+    if (group.creatorId.toString() !== user.userId) {
+      return NextResponse.json(
+        { success: false, error: 'Only creator can delete group' },
+        { status: 403 }
+      );
+    }
+
+    await Group.findByIdAndDelete(groupId);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Group deleted successfully',
+    });
   } catch (error) {
-    console.error('Error deleting group:', error)
+    console.error('Error deleting group:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to delete group' },
       { status: 500 }
-    )
+    );
   }
 }

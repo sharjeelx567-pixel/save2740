@@ -1,20 +1,69 @@
 "use client"
 
-import { Rocket, CheckCircle2 } from "lucide-react"
+import { useState } from "react"
+import { Rocket, CheckCircle2, Loader2, X } from "lucide-react"
 import { useWallet } from "@/hooks/use-wallet"
 import { FINANCIAL } from "@/lib/constants"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { useToast } from "@/components/ui/use-toast"
+import { WithdrawMoney } from "@/components/wallet/withdraw-money"
 
 /**
  * HeroCard Component
  * Displays yearly savings challenge with progress and daily target
  */
 export function HeroCard() {
-  const { balance, loading } = useWallet()
+  const { balance, loading, refetch } = useWallet()
+  const { toast } = useToast()
+  const [showAutoSaveModal, setShowAutoSaveModal] = useState(false)
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false)
+  const [processingAutoSave, setProcessingAutoSave] = useState(false)
 
   const remaining = Math.max(0, FINANCIAL.YEARLY_SAVINGS_GOAL - balance)
   const progress = Math.min(100, (balance / FINANCIAL.YEARLY_SAVINGS_GOAL) * 100)
   const dailyTarget = (remaining / 365).toFixed(2)
+  const dailyAmount = 27.40
+
+  const handleAutoSave = async () => {
+    setProcessingAutoSave(true)
+    try {
+      // Process daily contribution
+      const response = await fetch('/api/daily-savings/process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+        },
+        body: JSON.stringify({
+          amount: dailyAmount,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: 'Success!',
+          description: `Successfully saved $${dailyAmount} today. Keep your streak alive!`,
+        })
+        setShowAutoSaveModal(false)
+        refetch() // Refresh wallet data
+      } else {
+        throw new Error(data.error || 'Failed to process auto-save')
+      }
+    } catch (error) {
+      console.error('Auto-save error:', error)
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to process auto-save. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setProcessingAutoSave(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -45,21 +94,27 @@ export function HeroCard() {
         </div>
 
         <div className="space-y-2 md:space-y-3">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight break-words">
             Save <span className="text-brand-green">${remaining.toLocaleString()}</span> More This Year
           </h2>
-          <p className="text-slate-400 text-xs sm:text-sm md:text-base lg:text-lg">Just ${dailyTarget} a day. Small steps, big results.</p>
+          <p className="text-slate-400 text-xs sm:text-sm md:text-base lg:text-lg break-words">Just ${dailyTarget} a day. Small steps, big results.</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 md:gap-4 pt-2 md:pt-4">
-          <button className="w-full sm:w-auto bg-brand-green hover:bg-emerald-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-semibold flex items-center justify-center gap-2 transition-colors text-sm md:text-base">
+          <button 
+            onClick={() => setShowAutoSaveModal(true)}
+            className="w-full sm:w-auto bg-brand-green hover:bg-emerald-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-semibold flex items-center justify-center gap-2 transition-colors text-sm md:text-base"
+          >
             <span className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
               <CheckCircle2 className="w-3 h-3 text-white" />
             </span>
-            <span className="hidden sm:inline">Processing Auto-Save...</span>
+            <span className="hidden sm:inline">Process Auto-Save</span>
             <span className="sm:hidden">Auto-Save</span>
           </button>
-          <button className="w-full sm:w-auto border border-slate-600 hover:bg-white/5 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-semibold transition-colors text-sm md:text-base">
+          <button 
+            onClick={() => setShowWithdrawModal(true)}
+            className="w-full sm:w-auto border border-slate-600 hover:bg-white/5 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-semibold transition-colors text-sm md:text-base"
+          >
             Withdraw
           </button>
         </div>
@@ -98,6 +153,76 @@ export function HeroCard() {
 
       {/* Background decoration */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl -mr-20 -mt-20" />
+
+      {/* Auto-Save Confirmation Modal */}
+      <Dialog open={showAutoSaveModal} onOpenChange={setShowAutoSaveModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-brand-green" />
+              Process Daily Auto-Save
+            </DialogTitle>
+            <DialogDescription>
+              Save ${dailyAmount} today to maintain your savings streak
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Daily Savings Amount</span>
+                <span className="text-2xl font-bold text-brand-green">${dailyAmount}</span>
+              </div>
+              <p className="text-xs text-gray-600 mt-2">
+                This will be deducted from your wallet balance and added to your savings goal.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowAutoSaveModal(false)}
+                className="flex-1"
+                disabled={processingAutoSave}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAutoSave}
+                disabled={processingAutoSave}
+                className="flex-1 bg-brand-green hover:bg-emerald-600"
+              >
+                {processingAutoSave ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Confirm Save
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Withdraw Money Modal */}
+      <Dialog open={showWithdrawModal} onOpenChange={setShowWithdrawModal}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-gray-900">Withdraw Money</DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Transfer funds to your linked payment method
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <WithdrawMoney />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

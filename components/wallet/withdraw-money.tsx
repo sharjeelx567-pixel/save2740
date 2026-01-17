@@ -5,21 +5,14 @@
 
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/components/ui/use-toast'
 import { useWallet } from '@/hooks/use-wallet'
-import { Loader2, AlertCircle, AlertTriangle, Clock, DollarSign } from 'lucide-react'
+import { Loader2, AlertCircle, Clock, DollarSign } from 'lucide-react'
 
 interface ValidationErrors {
   [key: string]: string
@@ -150,92 +143,81 @@ export function WithdrawMoney() {
   // Success screen
   if (success && successData) {
     return (
-      <div className="max-w-md mx-auto">
-        <Card className="border-green-200 bg-green-50">
-          <CardHeader className="text-center">
-            <Clock className="h-12 w-12 text-brand-green mx-auto mb-4" />
-            <CardTitle className="text-brand-green">Withdrawal Pending</CardTitle>
-            <CardDescription className="text-brand-green/80">
-              Your withdrawal is being processed
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-2">Withdrawal Amount</p>
-              <p className="text-4xl font-bold text-brand-green">
-                ${parseFloat(formData.amount).toFixed(2)}
-              </p>
-            </div>
+      <div className="space-y-4">
+        <div className="text-center py-4">
+          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Clock className="h-8 w-8 text-brand-green" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Withdrawal Pending</h3>
+          <p className="text-sm text-gray-600">Your withdrawal is being processed</p>
+        </div>
 
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Transaction ID</span>
-                <span className="font-mono text-gray-900">{successData.transactionId}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Status</span>
-                <span className="font-semibold text-brand-green">Pending (3 days)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Estimated Arrival</span>
-                <span className="font-semibold">
-                  {new Date(successData.estimatedDelivery).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+          <p className="text-sm text-gray-600 mb-1">Withdrawal Amount</p>
+          <p className="text-3xl font-bold text-brand-green">
+            ${parseFloat(formData.amount).toFixed(2)}
+          </p>
+        </div>
 
-            <Alert className="bg-green-100 border-green-300">
-              <AlertCircle className="h-4 w-4 text-brand-green/90" />
-              <AlertDescription className="text-brand-green/90 text-sm">
-                {successData.message}
-              </AlertDescription>
-            </Alert>
+        <div className="space-y-2 text-sm bg-slate-50 rounded-lg p-4">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Transaction ID</span>
+            <span className="font-mono text-gray-900 text-xs">{successData.transactionId}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Status</span>
+            <span className="font-semibold text-brand-green">Pending (3 days)</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Estimated Arrival</span>
+            <span className="font-semibold text-gray-900">
+              {new Date(successData.estimatedDelivery).toLocaleDateString()}
+            </span>
+          </div>
+        </div>
 
-            <Alert className="bg-amber-50 border-amber-200">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-800 text-sm">
-                Bank transfers typically take 2-3 business days. We'll notify you when it arrives.
-              </AlertDescription>
-            </Alert>
+        <Alert className="bg-emerald-50 border-emerald-200">
+          <AlertCircle className="h-4 w-4 text-brand-green" />
+          <AlertDescription className="text-brand-green text-sm">
+            {successData.message}
+          </AlertDescription>
+        </Alert>
 
-            <Button
-              className="w-full"
-              onClick={() => {
-                setSuccess(false)
-                setSuccessData(null)
-              }}
-            >
-              Make Another Withdrawal
-            </Button>
-
-            <Button variant="outline" className="w-full">
-              View Transaction History
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              setSuccess(false)
+              setSuccessData(null)
+            }}
+          >
+            Make Another Withdrawal
+          </Button>
+          <Button
+            className="flex-1 bg-brand-green hover:bg-emerald-600"
+            onClick={() => window.location.href = '/wallet-transactions'}
+          >
+            View History
+          </Button>
+        </div>
       </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Withdraw from Wallet</CardTitle>
-        <CardDescription>Transfer money to your bank account</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
           {/* Current Balance */}
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600">Available Balance</p>
-            <p className="text-3xl font-bold text-gray-900">
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+            <p className="text-sm text-gray-600 mb-1">Available Balance</p>
+            <p className="text-2xl font-bold text-brand-green">
               ${availableBalance.toFixed(2)}
             </p>
           </div>
 
           {/* Amount */}
           <div className="space-y-2">
-            <Label htmlFor="amount">Withdrawal Amount *</Label>
+            <Label htmlFor="amount" className="text-sm font-medium text-gray-700">Withdrawal Amount *</Label>
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -249,7 +231,7 @@ export function WithdrawMoney() {
                 onChange={handleChange}
                 disabled={processing}
                 placeholder="0.00"
-                className={`pl-8 ${errors.amount ? 'border-red-500' : ''}`}
+                className={`pl-8 ${errors.amount ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'focus:ring-brand-green focus:border-brand-green'}`}
               />
             </div>
             {errors.amount && (
@@ -262,14 +244,16 @@ export function WithdrawMoney() {
 
           {/* Destination Account */}
           <div className="space-y-2">
-            <Label htmlFor="paymentMethodId">Destination Account *</Label>
+            <Label htmlFor="paymentMethodId" className="text-sm font-medium text-gray-700">Destination Account *</Label>
             <select
               id="paymentMethodId"
               name="paymentMethodId"
               value={formData.paymentMethodId}
               onChange={handleChange}
               disabled={processing}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green ${
+                errors.paymentMethodId ? 'border-red-500' : 'border-gray-300'
+              }`}
             >
               <option value="">Select where to withdraw</option>
               <option value="bank_1">Chase Bank •••• 4242</option>
@@ -282,7 +266,7 @@ export function WithdrawMoney() {
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description">Description (Optional)</Label>
+            <Label htmlFor="description" className="text-sm font-medium text-gray-700">Description (Optional)</Label>
             <Input
               id="description"
               name="description"
@@ -290,13 +274,12 @@ export function WithdrawMoney() {
               onChange={handleChange}
               disabled={processing}
               placeholder="What is this withdrawal for?"
+              className="focus:ring-brand-green focus:border-brand-green"
             />
           </div>
 
-
-
           {/* Processing Info */}
-          <Alert className="bg-amber-50 border-amber-200">
+          <Alert className="bg-amber-50 border-amber-200 rounded-lg">
             <Clock className="h-4 w-4 text-amber-600" />
             <AlertDescription className="text-amber-800 text-sm">
               Bank transfers take 2-3 business days to complete. Weekend deposits will be processed on Monday.
@@ -306,14 +289,12 @@ export function WithdrawMoney() {
           {/* Submit Button */}
           <Button
             type="submit"
-            className="w-full"
+            className="w-full bg-brand-green hover:bg-emerald-600 text-white"
             disabled={processing || availableBalance < MIN_WITHDRAWAL}
           >
             {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {processing ? 'Processing...' : `Withdraw $${formData.amount || '0.00'}`}
           </Button>
         </form>
-      </CardContent>
-    </Card>
   )
 }

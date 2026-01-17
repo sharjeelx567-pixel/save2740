@@ -36,7 +36,7 @@ export interface IPaymentDisputeModel extends Document {
 const paymentDisputeSchema = new Schema<IPaymentDisputeModel>(
   {
     userId: { type: String, required: true, index: true },
-    transactionId: { type: String, required: true, index: true },
+    transactionId: { type: String, required: true }, // Index created below
     amount: { type: Number, required: true },
     currency: { type: String, default: 'USD' },
     status: {

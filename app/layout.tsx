@@ -1,11 +1,17 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Toaster } from "@/components/ui/toaster"
+import { SupportChatProvider } from '@/context/support-chat-context'
+import { SupportChatButton } from '@/components/support-chat-button'
+import { SupportChatWidget } from '@/components/support-chat-widget'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const inter = Inter({ 
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-inter',
+})
 
 export const metadata: Metadata = {
   title: 'Save2740 - Smart Savings App',
@@ -36,11 +42,17 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans antialiased`}>
-        {children}
-        <Toaster />
-        <Analytics />
+    <html lang="en" className={inter.variable}>
+      <body className="font-sans antialiased">
+        <SupportChatProvider>
+          {children}
+          <Toaster />
+          <Analytics />
+
+          {/* Support Chat Components */}
+          <SupportChatButton />
+          <SupportChatWidget />
+        </SupportChatProvider>
       </body>
     </html>
   )

@@ -166,19 +166,19 @@ export function SavingsBreakdown() {
         {formattedDeposits.length > 0 ? (
           <div className="space-y-4 md:space-y-6">
             {formattedDeposits.map((deposit, idx) => (
-              <div key={idx} className="flex items-center justify-between hover:bg-slate-50 p-2 rounded transition-colors">
-                <div className="flex items-center gap-3 md:gap-4">
+              <div key={idx} className="flex items-center justify-between hover:bg-slate-50 p-2 rounded transition-colors gap-2 sm:gap-4">
+                <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
                   <div className="w-8 h-8 md:w-10 md:h-10 bg-emerald-50 rounded-full flex items-center justify-center shrink-0">
                     <ArrowUp className="w-4 h-4 md:w-5 md:h-5 text-emerald-400" />
                   </div>
-                  <div>
-                    <p className="text-xs sm:text-sm font-bold text-slate-800">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">
                       {deposit.label}
                     </p>
                     <p className="text-xs text-slate-400 font-medium">{deposit.date}</p>
                   </div>
                 </div>
-                <span className="text-brand-green font-bold text-xs sm:text-sm">
+                <span className="text-brand-green font-bold text-xs sm:text-sm shrink-0">
                   {deposit.amount}
                 </span>
               </div>

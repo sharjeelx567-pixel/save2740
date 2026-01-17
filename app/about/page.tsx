@@ -32,7 +32,7 @@ function AboutContent() {
                         </div>
 
                         {/* Our Story */}
-                        <Card className="border-none shadow-sm rounded-2xl">
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl">
                             <CardContent className="p-6 md:p-8">
                                 <h2 className="text-2xl font-bold text-slate-900 mb-4">Our Story</h2>
                                 <div className="space-y-4 text-slate-700 leading-relaxed">
@@ -51,9 +51,9 @@ function AboutContent() {
 
                         {/* Mission & Vision */}
                         <div className="grid md:grid-cols-2 gap-6">
-                            <Card className="border-none shadow-sm rounded-2xl">
+                            <Card className="border border-slate-200 shadow-sm rounded-2xl hover:border-brand-green/30 transition-colors">
                                 <CardContent className="p-6">
-                                    <div className="w-12 h-12 bg-brand-green/10 rounded-full flex items-center justify-center mb-4">
+                                    <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mb-4">
                                         <Target className="w-6 h-6 text-brand-green" />
                                     </div>
                                     <h3 className="text-xl font-bold text-slate-900 mb-3">Our Mission</h3>
@@ -63,10 +63,10 @@ function AboutContent() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-none shadow-sm rounded-2xl">
+                            <Card className="border border-slate-200 shadow-sm rounded-2xl hover:border-brand-green/30 transition-colors">
                                 <CardContent className="p-6">
-                                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-4">
-                                        <Heart className="w-6 h-6 text-blue-600" />
+                                    <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mb-4">
+                                        <Heart className="w-6 h-6 text-brand-green" />
                                     </div>
                                     <h3 className="text-xl font-bold text-slate-900 mb-3">Our Vision</h3>
                                     <p className="text-slate-700">
@@ -77,7 +77,7 @@ function AboutContent() {
                         </div>
 
                         {/* Core Values */}
-                        <Card className="border-none shadow-sm rounded-2xl">
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl">
                             <CardContent className="p-6 md:p-8">
                                 <h2 className="text-2xl font-bold text-slate-900 mb-6">Our Core Values</h2>
 
@@ -126,7 +126,7 @@ function AboutContent() {
                         </Card>
 
                         {/* Why Choose Us */}
-                        <Card className="border-none shadow-sm rounded-2xl">
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl">
                             <CardContent className="p-6 md:p-8">
                                 <h2 className="text-2xl font-bold text-slate-900 mb-6">Why Choose Save2740?</h2>
 
@@ -167,13 +167,13 @@ function AboutContent() {
                         </Card>
 
                         {/* CTA */}
-                        <Card className="border-2 border-brand-green bg-brand-green/5 rounded-2xl">
+                        <Card className="border-2 border-brand-green bg-emerald-50 rounded-2xl">
                             <CardContent className="p-8 text-center">
                                 <h3 className="text-2xl font-bold text-slate-900 mb-3">Join Our Community</h3>
                                 <p className="text-slate-700 mb-6 max-w-xl mx-auto">
                                     Be part of a growing movement of people taking control of their financial future.
                                 </p>
-                                <button className="bg-brand-green hover:bg-brand-green/90 text-white px-8 py-3 rounded-lg font-semibold transition-colors">
+                                <button className="bg-brand-green hover:bg-emerald-600 text-white px-8 py-3 rounded-lg font-semibold transition-colors">
                                     Start Saving Today
                                 </button>
                             </CardContent>

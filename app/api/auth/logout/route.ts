@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     return apiSuccess(
       {
         message: 'Logged out successfully',
-        redirectTo: '/login',
+        redirectTo: '/auth/login',
       },
       200
     );

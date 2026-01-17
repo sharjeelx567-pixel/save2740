@@ -27,7 +27,7 @@ export function useWallet(
   options: Partial<UseWalletOptions> = {}
 ) {
   const {
-    pollInterval = 10000,
+    pollInterval = 30000, // 30 seconds (reduced from 10s to minimize server load)
     refetchOnFocus = true,
     refetchOnOnline = true,
   } = options;

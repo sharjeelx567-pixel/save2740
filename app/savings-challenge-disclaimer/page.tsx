@@ -23,13 +23,13 @@ function SavingsChallengeDisclaimerContent() {
                     <div className="max-w-4xl mx-auto space-y-6">
 
                         <div className="mb-8">
-                            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Savings Challenge Disclaimer</h1>
+                            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">Savings Challenge Disclaimer</h1>
                             <p className="text-slate-600">Last updated: January 8, 2026</p>
                         </div>
 
-                        <Card className="border-2 border-orange-200 bg-orange-50 rounded-2xl">
+                        <Card className="border-2 border-amber-200 bg-amber-50 rounded-2xl">
                             <CardContent className="p-6 flex items-start gap-3">
-                                <AlertTriangle className="w-6 h-6 text-orange-600 flex-shrink-0 mt-1" />
+                                <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
                                 <div>
                                     <h3 className="font-bold text-slate-900 mb-2">Important Notice</h3>
                                     <p className="text-slate-700 text-sm">
@@ -39,27 +39,15 @@ function SavingsChallengeDisclaimerContent() {
                             </CardContent>
                         </Card>
 
-                        <Card className="border-none shadow-sm rounded-2xl">
-                            <CardContent className="p-6 md:p-8 prose prose-slate max-w-none">
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl">
+                            <CardContent className="p-6 md:p-8 prose prose-slate prose-compact max-w-none">
 
                                 <h2>1. No Guaranteed Returns</h2>
-                                <p>
-                                    Save2740 is a <strong>savings tool</strong>, not an investment platform. We do not offer, promise, or guarantee any returns on your savings beyond the principal amount you deposit. Your savings do not earn interest or investment returns.
-                                </p>
-                                <p>
-                                    <strong>What you save is what you get.</strong> If you save $27.40/day for 365 days, you will have approximately $10,000 in your wallet (minus any applicable fees).
-                                </p>
+                                <p>Save2740 is a <strong>savings tool</strong>, not an investment platform. No returns beyond principal. Savings do not earn interest or investment returns.</p>
+                                <p><strong>What you save is what you get.</strong> Saving $27.40/day for 365 days = ~$10,000 (minus fees).</p>
 
                                 <h2>2. Not Financial Advice</h2>
-                                <p>
-                                    Save2740 does not provide financial, investment, or tax advice. The savings challenges are educational tools to help build saving habits. You should:
-                                </p>
-                                <ul>
-                                    <li>Consult with a qualified financial advisor regarding your financial goals</li>
-                                    <li>Ensure you can afford the challenge amount without financial hardship</li>
-                                    <li>Consider your personal financial circumstances before enrolling</li>
-                                    <li>Understand the tax implications of your savings (consult a tax professional)</li>
-                                </ul>
+                                <p>Save2740 does not provide financial, investment, or tax advice. Challenges are educational tools. Consult a financial advisor, ensure affordability, consider personal circumstances, and understand tax implications.</p>
 
                                 <h2>3. Personal Responsibility</h2>
                                 <p>
@@ -74,14 +62,11 @@ function SavingsChallengeDisclaimerContent() {
                                 </ul>
 
                                 <h2>4. Payment Risks</h2>
-                                <p>
-                                    Automatic payments carry certain risks:
-                                </p>
                                 <ul>
-                                    <li><strong>Overdraft Fees:</strong> If your bank account has insufficient funds, you may incur overdraft fees from your bank. Save2740 is not responsible for these fees.</li>
-                                    <li><strong>Failed Payments:</strong> If payments fail repeatedly, your challenge may be paused or terminated</li>
-                                    <li><strong>Payment Method Issues:</strong> Expired cards or closed accounts can cause payment failures</li>
-                                    <li><strong>Bank Delays:</strong> Some transfers may take 1-3 business days to complete</li>
+                                    <li><strong>Overdraft Fees:</strong> Insufficient funds may incur bank overdraft fees (Save2740 not responsible)</li>
+                                    <li><strong>Failed Payments:</strong> Repeated failures may pause or terminate your challenge</li>
+                                    <li><strong>Payment Method Issues:</strong> Expired cards or closed accounts cause failures</li>
+                                    <li><strong>Bank Delays:</strong> Transfers may take 1-3 business days</li>
                                 </ul>
 
                                 <h2>5. Streak and Challenge Commitment</h2>
@@ -93,15 +78,12 @@ function SavingsChallengeDisclaimerContent() {
                                 </ul>
 
                                 <h2>6. Group Contribution Risks</h2>
-                                <p>
-                                    Group challenges involve additional considerations:
-                                </p>
                                 <ul>
-                                    <li><strong>Member Dependency:</strong> Payout depends on all members completing their contributions</li>
-                                    <li><strong>Default Risk:</strong> If a member fails to contribute, it may delay or affect group payouts</li>
-                                    <li><strong>No Early Withdrawal:</strong> Group funds are locked until the full cycle completes</li>
-                                    <li><strong>Know Your Group:</strong> Only join groups with people you trust</li>
-                                    <li><strong>No Guarantees:</strong> Save2740 cannot guarantee group member performance</li>
+                                    <li>Payout depends on all members completing contributions</li>
+                                    <li>Member defaults may delay or affect payouts</li>
+                                    <li>Funds locked until full cycle completes</li>
+                                    <li>Only join groups with people you trust</li>
+                                    <li>Save2740 cannot guarantee group member performance</li>
                                 </ul>
 
                                 <h2>7. Withdrawal Limitations</h2>
@@ -114,23 +96,10 @@ function SavingsChallengeDisclaimerContent() {
                                 </ul>
 
                                 <h2>8. Service Availability</h2>
-                                <p>
-                                    While we strive for 24/7 availability:
-                                </p>
-                                <ul>
-                                    <li>Service may be temporarily unavailable due to maintenance or technical issues</li>
-                                    <li>We are not liable for losses resulting from service interruptions</li>
-                                    <li>Scheduled maintenance will be announced in advance when possible</li>
-                                    <li>Emergency maintenance may occur without prior notice</li>
-                                </ul>
+                                <p>We strive for 24/7 availability but service may be unavailable due to maintenance or technical issues. We are not liable for losses from service interruptions. Scheduled maintenance announced when possible; emergency maintenance may occur without notice.</p>
 
                                 <h2>9. No FDIC Insurance</h2>
-                                <p>
-                                    <strong>Important:</strong> Funds in your Save2740 wallet are <strong>not FDIC insured</strong>. While we use banking partners and secure processors, your savings are held in a stored value account, not a traditional bank account.
-                                </p>
-                                <p>
-                                    We implement strict security measures and work with regulated partners, but you should be aware that wallet balances are not covered by federal deposit insurance.
-                                </p>
+                                <p><strong>Important:</strong> Funds in your Save2740 wallet are <strong>not FDIC insured</strong>. Savings are held in a stored value account, not a traditional bank account. While we use secure banking partners, wallet balances are not covered by federal deposit insurance.</p>
 
                                 <h2>10. Tax Implications</h2>
                                 <ul>
@@ -142,71 +111,16 @@ function SavingsChallengeDisclaimerContent() {
                                 </ul>
 
                                 <h2>11. Change of Terms</h2>
-                                <p>
-                                    We reserve the right to:
-                                </p>
-                                <ul>
-                                    <li>Modify challenge parameters with 30 days' notice</li>
-                                    <li>Adjust fees with advance notification</li>
-                                    <li>Discontinue challenges or features</li>
-                                    <li>Change eligibility requirements</li>
-                                </ul>
-                                <p>
-                                    Active challenges will be honored under the terms in effect when you enrolled, unless changes are required by law.
-                                </p>
+                                <p>We reserve the right to modify challenge parameters (30 days' notice), adjust fees (advance notification), discontinue challenges/features, and change eligibility. Active challenges honored under enrollment terms unless changes required by law.</p>
 
                                 <h2>12. Limitation of Liability</h2>
-                                <p>
-                                    Save2740's liability is limited to the amount in your wallet balance. We are not liable for:
-                                </p>
-                                <ul>
-                                    <li>Indirect, incidental, or consequential damages</li>
-                                    <li>Lost profits or savings opportunities</li>
-                                    <li>Emotional distress or frustration</li>
-                                    <li>Third-party actions (bank fees, payment processor issues)</li>
-                                    <li>Force majeure events beyond our control</li>
-                                </ul>
+                                <p>Save2740's liability is limited to your wallet balance. We are not liable for indirect, incidental, or consequential damages; lost profits; emotional distress; third-party actions (bank fees, processor issues); or force majeure events.</p>
 
                                 <h2>13. User Acknowledgment</h2>
-                                <p>
-                                    By participating in Save2740 challenges, you acknowledge that you:
-                                </p>
-                                <ul>
-                                    <li className="flex items-start gap-2">
-                                        <span>✓</span>
-                                        <span>Have read and understood this disclaimer in full</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <span>✓</span>
-                                        <span>Understand that savings do not earn guaranteed returns</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <span>✓</span>
-                                        <span>Accept responsibility for your financial decisions</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <span>✓</span>
-                                        <span>Understand the risks of automated payments and group challenges</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <span>✓</span>
-                                        <span>Have consulted financial advisors if needed</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <span>✓</span>
-                                        <span>Can afford the challenge without financial hardship</span>
-                                    </li>
-                                </ul>
+                                <p>By participating, you acknowledge: (1) Read and understood this disclaimer, (2) Understand savings do not earn guaranteed returns, (3) Accept responsibility for financial decisions, (4) Understand risks of automated payments and group challenges, (5) Consulted financial advisors if needed, (6) Can afford the challenge without financial hardship.</p>
 
                                 <h2>14. Questions or Concerns</h2>
-                                <p>
-                                    If you have questions about this disclaimer or the challenges:
-                                </p>
-                                <p>
-                                    Email: legal@save2740.app<br />
-                                    Support: support@save2740.app<br />
-                                    Phone: 1-800-SAVE-274
-                                </p>
+                                <p>Email: legal@save2740.app | Support: support@save2740.app | Phone: 1-800-SAVE-274</p>
 
                             </CardContent>
                         </Card>
