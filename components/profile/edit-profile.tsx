@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useProfile } from "@/hooks/use-profile";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,9 +11,11 @@ import { Camera, Loader2, Save, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function EditProfile() {
+    const { profile, refetch } = useProfile();
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState("");
+
     const [formData, setFormData] = useState({
         firstName: "",
         lastName: "",
@@ -23,6 +26,22 @@ export function EditProfile() {
         zipCode: "",
         country: "",
     });
+
+    // Initialize form data when profile is loaded
+    useEffect(() => {
+        if (profile) {
+            setFormData({
+                firstName: profile.firstName || "",
+                lastName: profile.lastName || "",
+                dateOfBirth: profile.dateOfBirth ? new Date(profile.dateOfBirth).toISOString().split('T')[0] : "",
+                address: profile.address?.street || "",
+                city: profile.address?.city || "",
+                state: profile.address?.state || "",
+                zipCode: profile.address?.postalCode || "",
+                country: profile.address?.country || "",
+            });
+        }
+    }, [profile]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -35,18 +54,37 @@ export function EditProfile() {
         setSuccess(false);
 
         try {
-            const response = await fetch("/api/user/profile", {
+            // Transform local state back to API structure
+            const apiData = {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                dateOfBirth: formData.dateOfBirth,
+                address: {
+                    street: formData.address,
+                    city: formData.city,
+                    state: formData.state,
+                    postalCode: formData.zipCode,
+                    country: formData.country
+                }
+            };
+
+            const response = await fetch("/api/profile", {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify(formData),
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${localStorage.getItem('auth_token') || ''}`
+                },
+                body: JSON.stringify(apiData),
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                throw new Error("Failed to update profile");
+                throw new Error(data.error || "Failed to update profile");
             }
 
             setSuccess(true);
+            refetch(); // Refresh global profile state
             setTimeout(() => setSuccess(false), 3000);
         } catch (err: any) {
             setError(err.message || "Failed to update profile");

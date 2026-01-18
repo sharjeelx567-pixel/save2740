@@ -51,7 +51,9 @@ export function KYCStatus() {
     const fetchKYCStatus = async () => {
       try {
         const response = await fetch('/api/kyc/status', {
-          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+          },
         })
 
         if (!response.ok) throw new Error('Failed to fetch KYC status')
@@ -112,7 +114,9 @@ export function KYCStatus() {
 
       const response = await fetch('/api/kyc/documents', {
         method: 'POST',
-        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
         body: formData,
       })
 

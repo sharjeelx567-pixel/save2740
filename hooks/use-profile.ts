@@ -33,6 +33,7 @@ export interface ProfileData {
     phone: string
     relationship: string
   }
+  accountTier: 'basic' | 'pro' | 'business'
   updatedAt: string
 }
 

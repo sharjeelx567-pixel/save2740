@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils"
 import { WalletBalance } from "@/components/wallet-balance"
 import { LogoutModal } from "@/components/logout-modal"
 import Image from "next/image"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useProfile } from "@/hooks/use-profile"
 
 // Custom Dashboard Icon Component
 const DashboardIcon = ({ className }: { className?: string }) => (
@@ -142,43 +144,13 @@ interface SidebarProps {
   onClose?: () => void
 }
 
-interface UserData {
-  firstName: string
-  lastName: string
-  email: string
-}
-
 export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname()
   const [logoutOpen, setLogoutOpen] = useState(false)
-  const [user, setUser] = useState<UserData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { profile: user, loading } = useProfile()
   const [showScrollUp, setShowScrollUp] = useState(false)
   const [showScrollDown, setShowScrollDown] = useState(false)
-  const navRef = useState<HTMLElement | null>(null)[0]
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await fetch('/api/auth/me', {
-          method: 'GET',
-          credentials: 'include',
-        })
-        if (response.ok) {
-          const data = await response.json()
-          if (data.success && data.data.user) {
-            setUser(data.data.user)
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch user:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchUser()
-  }, [])
+  // Removed manual fetchUser useEffect as useProfile handles it
 
   // Update scroll button visibility
   const updateScrollButtons = (element: HTMLElement) => {
@@ -369,12 +341,26 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Footer Section - Fixed at Bottom */}
       <div className="flex-shrink-0 p-3 sm:p-4 border-t border-slate-100 space-y-2 sm:space-y-3">
         <div className="space-y-2 sm:space-y-3">
-          <Link href="/profile" onClick={onClose} prefetch={true}>
-            <img
-              src="/profile-section.png"
-              alt="User Profile"
-              className="h-auto max-h-10 object-contain cursor-pointer"
-            />
+          <Link href="/profile" onClick={onClose} prefetch={true} className="flex-1 min-w-0 block">
+            <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm hover:border-emerald-100 transition-all cursor-pointer group">
+              <Avatar className="h-10 w-10 min-w-[2.5rem] border-2 border-white shadow-sm ring-1 ring-slate-100 shrink-0">
+                <AvatarImage src={user?.profilePicture?.url} alt={`${user?.firstName} ${user?.lastName}`} className="object-cover" />
+                <AvatarFallback className="bg-brand-green text-white font-medium">
+                  {user?.firstName?.charAt(0) || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0 text-left overflow-hidden">
+                <div className="flex items-center gap-2 mt-2">
+                  <p className="font-bold text-xs sm:text-sm text-emerald-500 truncate leading-snug">
+                    {user?.firstName ? `${user.firstName} ${user.lastName}` : 'Loading...'}
+                  </p>
+                  <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 transition-colors shrink-0 mt-1" />
+                </div>
+                <p className="text-[10px] sm:text-xs font-medium text-[#7C8DB5] truncate mt-0.5">
+                  {user?.accountTier ? `${user.accountTier.charAt(0).toUpperCase() + user.accountTier.slice(1)} member` : 'Basic member'}
+                </p>
+              </div>
+            </div>
           </Link>
 
           <button

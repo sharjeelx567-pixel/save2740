@@ -11,16 +11,22 @@ import jwt from 'jsonwebtoken'
 // GET /api/profile - Fetch user profile
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    let token = request.cookies.get('authToken')?.value
+
+    if (!token) {
+      const authHeader = request.headers.get('authorization')
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.slice(7)
+      }
+    }
+
+    if (!token) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const token = authHeader.slice(7)
-    
     // Verify JWT token
     let userId
     try {
@@ -35,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     await connectDB()
     const user = await User.findById(userId)
-    
+
     if (!user) {
       return NextResponse.json(
         { success: false, error: 'User not found' },
@@ -65,6 +71,7 @@ export async function GET(request: NextRequest) {
         uploadedAt: null,
       },
       bio: user.bio || '',
+      accountTier: user.accountTier || 'basic',
       emergencyContact: user.emergencyContact || {
         name: '',
         phone: '',
@@ -90,16 +97,22 @@ export async function GET(request: NextRequest) {
 // PUT /api/profile - Update user profile
 export async function PUT(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    let token = request.cookies.get('authToken')?.value
+
+    if (!token) {
+      const authHeader = request.headers.get('authorization')
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.slice(7)
+      }
+    }
+
+    if (!token) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const token = authHeader.slice(7)
-    
     // Verify JWT token
     let userId
     try {

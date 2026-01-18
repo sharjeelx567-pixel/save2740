@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Toaster } from "@/components/ui/toaster"
@@ -7,11 +6,10 @@ import { SupportChatProvider } from '@/context/support-chat-context'
 import { SupportChatButton } from '@/components/support-chat-button'
 import { SupportChatWidget } from '@/components/support-chat-widget'
 
-const inter = Inter({ 
-  subsets: ["latin"],
-  display: 'swap',
+// Using system fonts as fallback for production builds
+const inter = {
   variable: '--font-inter',
-})
+}
 
 export const metadata: Metadata = {
   title: 'Save2740 - Smart Savings App',

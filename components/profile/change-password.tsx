@@ -46,10 +46,12 @@ export function ChangePassword() {
         setLoading(true);
 
         try {
-            const response = await fetch("/api/user/change-password", {
+            const response = await fetch("/api/auth/change-password", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${localStorage.getItem('auth_token') || ''}`
+                },
                 body: JSON.stringify({
                     currentPassword: formData.currentPassword,
                     newPassword: formData.newPassword,

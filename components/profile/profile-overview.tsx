@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useProfile } from "@/hooks/use-profile";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,26 +10,7 @@ import { User, Mail, Phone, Calendar, MapPin, Shield, CheckCircle } from "lucide
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function ProfileOverview() {
-    const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
-
-    useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                const response = await fetch("/api/user/profile", {
-                    credentials: "include",
-                });
-                const data = await response.json();
-                setUser(data.user);
-            } catch (error) {
-                console.error("Error fetching profile:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchProfile();
-    }, []);
+    const { profile: user, loading } = useProfile();
 
     if (loading) {
         return (
@@ -57,12 +39,13 @@ export function ProfileOverview() {
                         {/* Avatar */}
                         <div className="relative">
                             <Avatar className="w-20 h-20 sm:w-24 sm:h-24 border-4 border-white shadow-xl">
-                                <AvatarImage src={user?.profileImage} alt={user?.name} />
+                                <AvatarImage src={user?.profilePicture?.url} alt={`${user?.firstName} ${user?.lastName}`} />
                                 <AvatarFallback className="bg-brand-green text-white text-2xl font-bold">
-                                    {user?.name?.charAt(0) || "U"}
+                                    {user?.firstName?.charAt(0) || "U"}
                                 </AvatarFallback>
                             </Avatar>
-                            {user?.kycVerified && (
+                            {/* Assuming we can determine verification status from somewhere, otherwise hardcoding check for now if we want dynamic, we need that field in ProfileData or derive it */}
+                            {user?.phoneVerified && (
                                 <div className="absolute -bottom-1 -right-1 bg-brand-green rounded-full p-1.5 border-2 border-white">
                                     <CheckCircle className="w-4 h-4 text-white" />
                                 </div>
@@ -72,21 +55,21 @@ export function ProfileOverview() {
                         {/* User Info */}
                         <div className="flex-1 text-center md:text-left">
                             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                                {user?.name || "User Name"}
+                                {user?.firstName} {user?.lastName}
                             </h2>
                             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-3">
                                 <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
-                                    {user?.accountTier || "Basic Member"}
+                                    Basic Member
                                 </Badge>
-                                {user?.kycVerified && (
+                                {/* {user?.kycVerified && (
                                     <Badge className="bg-blue-100 text-blue-700 border-blue-200 gap-1">
                                         <Shield className="w-3 h-3" />
                                         KYC Verified
                                     </Badge>
-                                )}
+                                )} */}
                             </div>
                             <p className="text-gray-600">
-                                Member since {user?.memberSince || "January 2024"}
+                                {user?.bio || "No bio added yet."}
                             </p>
                         </div>
                     </div>
@@ -108,9 +91,9 @@ export function ProfileOverview() {
                             <p className="text-sm text-gray-500 font-medium">Email Address</p>
                             <p className="text-base text-gray-900 font-semibold">{user?.email || "user@example.com"}</p>
                         </div>
-                        {user?.emailVerified && (
+                        {/* {user?.emailVerified && (
                             <Badge className="bg-green-100 text-green-700 border-green-200">Verified</Badge>
-                        )}
+                        )} */}
                     </div>
 
                     <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
@@ -119,7 +102,7 @@ export function ProfileOverview() {
                         </div>
                         <div className="flex-1">
                             <p className="text-sm text-gray-500 font-medium">Phone Number</p>
-                            <p className="text-base text-gray-900 font-semibold">{user?.phone || "+1 (555) 123-4567"}</p>
+                            <p className="text-base text-gray-900 font-semibold">{user?.phone || "Not provided"}</p>
                         </div>
                         {user?.phoneVerified && (
                             <Badge className="bg-green-100 text-green-700 border-green-200">Verified</Badge>
@@ -139,7 +122,7 @@ export function ProfileOverview() {
                         <Calendar className="w-5 h-5 text-gray-500" />
                         <div>
                             <p className="text-sm text-gray-500 font-medium">Date of Birth</p>
-                            <p className="text-base text-gray-900">{user?.dateOfBirth || "Not provided"}</p>
+                            <p className="text-base text-gray-900">{user?.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString() : "Not provided"}</p>
                         </div>
                     </div>
 

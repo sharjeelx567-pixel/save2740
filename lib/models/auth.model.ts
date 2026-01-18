@@ -14,6 +14,7 @@ export interface IUser extends Document {
   kycStatus?: 'pending' | 'approved' | 'rejected';
   referralCode?: string;
   referredBy?: string;
+  accountTier?: 'basic' | 'pro' | 'business';
   biometricEnabled: boolean;
   biometricCredentials?: {
     credentialId: string;
@@ -109,6 +110,11 @@ const UserSchema = new Schema<IUser>(
       type: String,
       sparse: true,
       trim: true,
+    },
+    accountTier: {
+      type: String,
+      enum: ["basic", "pro", "business"],
+      default: "basic",
     },
   },
   { timestamps: true }

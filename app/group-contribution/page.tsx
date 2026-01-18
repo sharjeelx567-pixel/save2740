@@ -395,7 +395,7 @@ function GroupContributionPageContent() {
       </div>
 
       <main className="flex-1 overflow-y-auto flex flex-col">
-        <DashboardHeader title="Group Contribution" onMenuClick={() => setIsMobileMenuOpen(true)} />
+        <DashboardHeader title="Group Contribution" onMenuClick={() => setIsMobileMenuOpen(true)} showMobileTitle={false} />
         <div className="flex-1 p-2 sm:p-3 md:p-6 lg:p-8 xl:p-10">
           <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 md:space-y-8">
 

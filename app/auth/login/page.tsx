@@ -56,12 +56,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row overflow-hidden">
+    <div className="min-h-screen flex flex-col md:flex-row md:overflow-hidden">
       {/* Left Side - Dark Green (All Screens - Stacks on top on mobile) */}
-      <div className="w-full md:w-1/2 bg-gradient-to-b from-[#064E3B] to-[#0D6948] text-white p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 flex flex-col justify-between min-h-[55vh] md:min-h-screen overflow-y-auto overflow-x-hidden">
+      <div className="w-full md:w-1/2 bg-gradient-to-b from-[#064E3B] to-[#0D6948] text-white p-6 md:p-8 lg:p-10 xl:p-12 flex flex-col justify-between h-auto md:h-screen overflow-y-auto overflow-x-hidden relative">
         <div>
           {/* Logo */}
-          <div className="mb-6 sm:mb-8 md:mb-12 lg:mb-16">
+          <div className="mb-6 md:mb-12 lg:mb-16">
             <img
               src="/login-logo.png"
               alt="Save2740 Logo"
@@ -70,57 +70,49 @@ export default function LoginPage() {
           </div>
 
           {/* Heading */}
-          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold leading-tight mb-3 sm:mb-4 lg:mb-6">
+          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold leading-tight mb-3 md:mb-6">
             Save $10,000 in a year — one day at a time.
           </h1>
 
           {/* Description */}
-          <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-100 max-w-md">
+          <p className="text-sm md:text-lg text-gray-100 max-w-md">
             Join the $27.40 daily challenge. Turn small consistent actions into massive yearly results ($10,000+).
           </p>
         </div>
 
         {/* Features at bottom */}
-        <div className="w-full max-w-full overflow-x-hidden">
-          <div className="flex items-center gap-2 sm:gap-3 md:gap-6 lg:gap-8 flex-wrap mt-6 md:mt-0">
-            <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
-              <div className="w-4 h-4 sm:w-6 sm:h-6 md:w-8 md:h-8 rounded-full bg-[#10B981] flex items-center justify-center flex-shrink-0">
-                <Check size={10} className="text-white sm:hidden" strokeWidth={3} />
-                <Check size={14} className="text-white hidden sm:block md:hidden" strokeWidth={3} />
-                <Check size={18} className="text-white hidden md:block" strokeWidth={3} />
+        <div className="w-full max-w-full">
+          <div className="flex items-center gap-x-4 gap-y-3 flex-wrap mt-6 md:mt-0 justify-start text-white">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="w-5 h-5 rounded bg-[#10B981] flex items-center justify-center flex-shrink-0 shadow-sm">
+                <Check className="w-3.5 h-3.5 text-white" strokeWidth={3.5} />
               </div>
-              <span className="text-xs sm:text-sm md:text-base text-gray-100 font-medium whitespace-nowrap">Streak Tracking</span>
+              <span className="text-sm text-gray-100 font-medium whitespace-nowrap">Streak Tracking</span>
             </div>
-            <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
-              <div className="w-4 h-4 sm:w-6 sm:h-6 md:w-8 md:h-8 rounded-full bg-[#10B981] flex items-center justify-center flex-shrink-0">
-                <Check size={10} className="text-white sm:hidden" strokeWidth={3} />
-                <Check size={14} className="text-white hidden sm:block md:hidden" strokeWidth={3} />
-                <Check size={18} className="text-white hidden md:block" strokeWidth={3} />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="w-5 h-5 rounded bg-[#10B981] flex items-center justify-center flex-shrink-0 shadow-sm">
+                <Check className="w-3.5 h-3.5 text-white" strokeWidth={3.5} />
               </div>
-              <span className="text-xs sm:text-sm md:text-base text-gray-100 font-medium whitespace-nowrap">Multipliers</span>
+              <span className="text-sm text-gray-100 font-medium whitespace-nowrap">Multipliers</span>
             </div>
-            <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
-              <div className="w-4 h-4 sm:w-6 sm:h-6 md:w-8 md:h-8 rounded-full bg-[#10B981] flex items-center justify-center flex-shrink-0">
-                <Check size={10} className="text-white sm:hidden" strokeWidth={3} />
-                <Check size={14} className="text-white hidden sm:block md:hidden" strokeWidth={3} />
-                <Check size={18} className="text-white hidden md:block" strokeWidth={3} />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="w-5 h-5 rounded bg-[#10B981] flex items-center justify-center flex-shrink-0 shadow-sm">
+                <Check className="w-3.5 h-3.5 text-white" strokeWidth={3.5} />
               </div>
-              <span className="text-xs sm:text-sm md:text-base text-gray-100 font-medium whitespace-nowrap">Secure Wallet</span>
+              <span className="text-sm text-gray-100 font-medium whitespace-nowrap">Secure Wallet</span>
             </div>
-            <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
-              <div className="w-4 h-4 sm:w-6 sm:h-6 md:w-8 md:h-8 rounded-full bg-[#10B981] flex items-center justify-center flex-shrink-0">
-                <Check size={10} className="text-white sm:hidden" strokeWidth={3} />
-                <Check size={14} className="text-white hidden sm:block md:hidden" strokeWidth={3} />
-                <Check size={18} className="text-white hidden md:block" strokeWidth={3} />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="w-5 h-5 rounded bg-[#10B981] flex items-center justify-center flex-shrink-0 shadow-sm">
+                <Check className="w-3.5 h-3.5 text-white" strokeWidth={3.5} />
               </div>
-              <span className="text-xs sm:text-sm md:text-base text-gray-100 font-medium whitespace-nowrap">Group Contribution</span>
+              <span className="text-sm text-gray-100 font-medium whitespace-nowrap">Group Contribution</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Right Side - Login Form */}
-      <div className="w-full md:w-1/2 bg-gray-50 flex items-start justify-center p-4 sm:p-6 md:p-8 lg:p-6 xl:p-8 min-h-screen overflow-y-auto">
+      <div className="w-full md:w-1/2 bg-gray-50 flex items-start justify-center p-4 sm:p-6 md:p-8 lg:p-6 xl:p-8 h-auto md:h-screen overflow-y-auto">
         <div className="w-full max-w-md py-6 sm:py-8">
           {/* Heading */}
           <div className="text-center mb-6 sm:mb-8">
