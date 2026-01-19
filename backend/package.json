@@ -1,0 +1,54 @@
+{
+    "name": "save2740-backend",
+    "version": "1.0.0",
+    "description": "Save2740 Backend API Server",
+    "main": "dist/server.js",
+    "scripts": {
+        "dev": "nodemon src/server.ts",
+        "build": "tsc",
+        "start": "node dist/server.js",
+        "lint": "eslint src --ext .ts"
+    },
+    "keywords": [
+        "savings",
+        "api",
+        "express"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "bcryptjs": "^3.0.3",
+        "compression": "^1.7.4",
+        "cookie-parser": "^1.4.7",
+        "cors": "^2.8.5",
+        "dotenv": "^17.2.3",
+        "express": "^5.2.1",
+        "express-mongo-sanitize": "^2.2.0",
+        "express-rate-limit": "^7.4.1",
+        "helmet": "^8.0.0",
+        "hpp": "^0.2.3",
+        "jsonwebtoken": "^9.0.3",
+        "mongodb": "^6.0.0",
+        "mongoose": "^8.0.0",
+        "morgan": "^1.10.0",
+        "nodemailer": "^7.0.12",
+        "stripe": "^20.1.0",
+        "wonka": "^6.3.5",
+        "zod": "3.25.76"
+    },
+    "devDependencies": {
+        "@types/bcryptjs": "^2.4.6",
+        "@types/compression": "^1.7.5",
+        "@types/cookie-parser": "^1.4.10",
+        "@types/cors": "^2.8.17",
+        "@types/express": "^5.0.0",
+        "@types/hpp": "^0.2.7",
+        "@types/jsonwebtoken": "^9.0.10",
+        "@types/morgan": "^1.9.9",
+        "@types/node": "^22",
+        "@types/nodemailer": "^7.0.4",
+        "nodemon": "^3.1.11",
+        "ts-node": "^10.9.2",
+        "typescript": "^5"
+    }
+}
