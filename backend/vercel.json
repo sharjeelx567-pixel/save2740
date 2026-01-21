@@ -1,16 +1,10 @@
 {
     "version": 2,
     "name": "save2740-backend",
-    "builds": [
+    "rewrites": [
         {
-            "src": "src/app.ts",
-            "use": "@vercel/node"
-        }
-    ],
-    "routes": [
-        {
-            "src": "/(.*)",
-            "dest": "src/app.ts"
+            "source": "/api/(.*)",
+            "destination": "/api/index.ts"
         }
     ],
     "env": {

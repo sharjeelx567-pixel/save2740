@@ -6,9 +6,11 @@
 import Stripe from 'stripe'
 
 // Initialize Stripe with secret key
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+// Initialize Stripe lazily or with check
+const stripeKey = process.env.STRIPE_SECRET_KEY || '';
+const stripe = stripeKey ? new Stripe(stripeKey, {
   apiVersion: '2024-11-20',
-} as any)
+} as any) : null as any;
 
 export async function createStripeCustomer(userId: string, email: string, metadata?: Record<string, string>) {
   try {
