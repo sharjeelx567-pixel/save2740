@@ -242,8 +242,8 @@ function WithdrawalPageContent() {
                           key={val}
                           onClick={() => handleAmountChange(val.toString())}
                           className={`py-2 px-3 rounded-lg font-medium transition-colors text-sm ${amount === val.toString()
-                              ? "bg-brand-green text-white"
-                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                            ? "bg-brand-green text-white"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                             }`}
                         >
                           ${val.toFixed(0)}
@@ -317,8 +317,8 @@ function WithdrawalPageContent() {
                       setError("")
                     }}
                     className={`w-full p-4 border-2 rounded-lg transition-colors text-left ${selectedAccount === account.id
-                        ? "border-brand-green bg-emerald-50"
-                        : "border-slate-300 hover:border-slate-400"
+                      ? "border-brand-green bg-emerald-50"
+                      : "border-slate-300 hover:border-slate-400"
                       }`}
                   >
                     <div className="flex items-center justify-between">

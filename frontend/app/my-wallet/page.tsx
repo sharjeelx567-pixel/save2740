@@ -8,7 +8,9 @@ import { DashboardHeader } from "@/components/dashboard-header"
 import { Sidebar } from "@/components/sidebar"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { Card, CardContent } from "@/components/ui/card"
-import { CheckCircle2, Wallet, ArrowUp, Download } from "lucide-react"
+import { apiClient } from "@/lib/api-client"
+import { toast } from "sonner"
+import { CheckCircle2, Wallet, ArrowUp, Download, Loader2 } from "lucide-react"
 import { useWallet } from "@/hooks/use-wallet"
 import { useTransactions } from "@/hooks/use-transactions"
 import { WalletFreezeNotice } from "@/components/wallet-freeze-notice"
@@ -30,6 +32,7 @@ function MyWalletPageContent() {
   const balance = walletData?.balance ?? 0
   const locked = walletData?.locked ?? 0
   const referral = walletData?.referral ?? 0
+  const availableBalance = walletData?.availableBalance ?? (balance - locked)
 
   const handleSuccess = () => {
     refetchWallet()
@@ -107,24 +110,51 @@ function MyWalletPageContent() {
               <div className="lg:col-span-1">
                 <Card className="bg-[#1E293B] border-none rounded-2xl md:rounded-3xl overflow-hidden h-full">
                   <CardContent className="p-4 sm:p-6 md:p-8 text-white flex flex-col justify-between h-full">
-                    <div>
-                      <p className="text-slate-400 text-xs sm:text-sm md:text-base mb-2">Total Wallet Balance</p>
-                      <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6">${balance.toFixed(2)}</h2>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Available:</span>
-                          <span className="font-semibold">${(balance - locked).toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Locked:</span>
-                          <span className="font-semibold text-orange-400">${locked.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Referral:</span>
-                          <span className="font-semibold text-emerald-400">${referral.toFixed(2)}</span>
+                    {walletLoading ? (
+                      <div className="space-y-4 animate-pulse">
+                        <div className="h-4 w-32 bg-slate-700/50 rounded" />
+                        <div className="h-12 w-48 bg-slate-700/50 rounded" />
+                        <div className="space-y-2">
+                          <div className="h-4 w-full bg-slate-700/50 rounded" />
+                          <div className="h-4 w-full bg-slate-700/50 rounded" />
+                          <div className="h-4 w-full bg-slate-700/50 rounded" />
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-slate-400 text-xs sm:text-sm md:text-base">Total Wallet Balance</p>
+                          <button
+                            onClick={async () => {
+                              try {
+                                toast.loading("Syncing wallet...");
+                                await apiClient.post('/api/wallet/sync');
+                                await refetchWallet();
+                                toast.success("Wallet synced!");
+                              } catch (e) { toast.error("Sync failed"); }
+                            }}
+                            className="text-xs text-brand-green hover:underline flex items-center gap-1"
+                          >
+                            <Loader2 className="w-3 h-3" /> Sync
+                          </button>
+                        </div>
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6">${balance.toFixed(2)}</h2>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Available:</span>
+                            <span className="font-semibold">${availableBalance.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Locked:</span>
+                            <span className="font-semibold text-orange-400">${locked.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Referral:</span>
+                            <span className="font-semibold text-emerald-400">${referral.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="space-y-4 mt-6">
                       <button

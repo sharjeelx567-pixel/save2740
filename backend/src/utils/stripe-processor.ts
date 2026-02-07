@@ -325,6 +325,49 @@ export class StripePaymentProcessor implements IPaymentProcessor {
         }
     }
 
+
+    /**
+     * Create a payout (withdrawal)
+     */
+    async createPayout(
+        amount: number,
+        currency: string,
+        destinationId?: string,
+        metadata?: any
+    ): Promise<{ success: boolean; payoutId: string; message?: string; error?: string }> {
+        try {
+            // Check if destination is provided. If not, it defaults to the platform's external account.
+            // If destinationId is a card token or bank account ID, we might need Connect.
+            // For now, in sandbox, we'll simulate a success if no destination is provided or if it's a test card.
+
+            // In a real implementation with Connect:
+            // const payout = await this.stripe.payouts.create({
+            //     amount,
+            //     currency: currency.toLowerCase(),
+            //     destination: destinationId, // stripe_account_id or similar
+            //     metadata
+            // });
+
+            console.log(`[StripeProcessor] Simulating payout of ${amount} ${currency} to ${destinationId}`);
+
+            // Simulate processing time
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            return {
+                success: true,
+                payoutId: `po_simulated_${Date.now()}`,
+                message: 'Payout processed successfully (Simulation)'
+            };
+        } catch (error: any) {
+            console.error('Stripe payout creation error:', error);
+            return {
+                success: false,
+                payoutId: '',
+                error: error.message || 'Failed to create payout'
+            };
+        }
+    }
+
     /**
      * Get Stripe instance (for advanced operations)
      */

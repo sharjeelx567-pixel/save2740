@@ -23,7 +23,7 @@ const MAX_WITHDRAWAL = 10000
 
 export function WithdrawMoney() {
   const { toast } = useToast()
-  const { data: wallet } = useWallet()
+  const { data: wallet, refetch } = useWallet()
   const [processing, setProcessing] = useState(false)
   const [errors, setErrors] = useState<ValidationErrors>({})
   const [success, setSuccess] = useState(false)
@@ -34,6 +34,36 @@ export function WithdrawMoney() {
     description: '',
     twoFactorCode: '',
   })
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([])
+  const [loadingMethods, setLoadingMethods] = useState(false)
+
+  React.useEffect(() => {
+    fetchPaymentMethods()
+  }, [])
+
+  const fetchPaymentMethods = async () => {
+    setLoadingMethods(true)
+    try {
+      const response = await fetch('/api/payment-methods', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      const data = await response.json()
+      if (data.success && Array.isArray(data.data)) {
+        setPaymentMethods(data.data)
+        // Auto-select isDefault
+        const defaultMethod = data.data.find((m: any) => m.isDefault)
+        if (defaultMethod) {
+          setFormData(prev => ({ ...prev, paymentMethodId: defaultMethod._id }))
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch payment methods", err)
+    } finally {
+      setLoadingMethods(false)
+    }
+  }
 
   const availableBalance = wallet?.balance ?? 0
 
@@ -127,6 +157,9 @@ export function WithdrawMoney() {
         twoFactorCode: '',
       })
 
+      // Refresh wallet data to show updated balance
+      refetch()
+
       toast({
         title: 'Success',
         description: 'Withdrawal processed successfully',
@@ -211,95 +244,111 @@ export function WithdrawMoney() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Current Balance */}
-          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-            <p className="text-sm text-gray-600 mb-1">Available Balance</p>
-            <p className="text-2xl font-bold text-brand-green">
-              ${availableBalance.toFixed(2)}
-            </p>
-          </div>
+      {/* Current Balance */}
+      <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+        <p className="text-sm text-gray-600 mb-1">Available Balance</p>
+        <p className="text-2xl font-bold text-brand-green">
+          ${availableBalance.toFixed(2)}
+        </p>
+      </div>
 
-          {/* Amount */}
-          <div className="space-y-2">
-            <Label htmlFor="amount" className="text-sm font-medium text-gray-700">Withdrawal Amount *</Label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                id="amount"
-                name="amount"
-                type="number"
-                step="0.01"
-                min={MIN_WITHDRAWAL}
-                max={Math.min(MAX_WITHDRAWAL, availableBalance)}
-                value={formData.amount}
-                onChange={handleChange}
-                disabled={processing}
-                placeholder="0.00"
-                className={`pl-8 ${errors.amount ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'focus:ring-brand-green focus:border-brand-green'}`}
-              />
-            </div>
-            {errors.amount && (
-              <p className="text-xs text-red-500">{errors.amount}</p>
-            )}
-            <p className="text-xs text-gray-500">
-              Min: ${MIN_WITHDRAWAL} • Max: ${Math.min(MAX_WITHDRAWAL, availableBalance).toFixed(2)}
-            </p>
-          </div>
+      {/* Amount */}
+      <div className="space-y-2">
+        <Label htmlFor="amount" className="text-sm font-medium text-gray-700">Withdrawal Amount *</Label>
+        <div className="relative">
+          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            id="amount"
+            name="amount"
+            type="number"
+            step="0.01"
+            min={MIN_WITHDRAWAL}
+            max={Math.min(MAX_WITHDRAWAL, availableBalance)}
+            value={formData.amount}
+            onChange={handleChange}
+            disabled={processing}
+            placeholder="0.00"
+            className={`pl-8 ${errors.amount ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'focus:ring-brand-green focus:border-brand-green'}`}
+          />
+        </div>
+        {errors.amount && (
+          <p className="text-xs text-red-500">{errors.amount}</p>
+        )}
+        <p className="text-xs text-gray-500">
+          Min: ${MIN_WITHDRAWAL} • Max: ${Math.min(MAX_WITHDRAWAL, availableBalance).toFixed(2)}
+        </p>
+      </div>
 
-          {/* Destination Account */}
-          <div className="space-y-2">
-            <Label htmlFor="paymentMethodId" className="text-sm font-medium text-gray-700">Destination Account *</Label>
-            <select
-              id="paymentMethodId"
-              name="paymentMethodId"
-              value={formData.paymentMethodId}
-              onChange={handleChange}
-              disabled={processing}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green ${
-                errors.paymentMethodId ? 'border-red-500' : 'border-gray-300'
+      <div className="space-y-2">
+        <Label htmlFor="paymentMethodId" className="text-sm font-medium text-gray-700">Destination Account *</Label>
+        {loadingMethods ? (
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading payment methods...
+          </div>
+        ) : (
+          <select
+            id="paymentMethodId"
+            name="paymentMethodId"
+            value={formData.paymentMethodId}
+            onChange={handleChange}
+            disabled={processing || loadingMethods}
+            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green ${errors.paymentMethodId ? 'border-red-500' : 'border-gray-300'
               }`}
-            >
-              <option value="">Select where to withdraw</option>
-              <option value="bank_1">Chase Bank •••• 4242</option>
-              <option value="bank_2">Bank of America •••• 8765</option>
-            </select>
-            {errors.paymentMethodId && (
-              <p className="text-xs text-red-500">{errors.paymentMethodId}</p>
-            )}
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-medium text-gray-700">Description (Optional)</Label>
-            <Input
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              disabled={processing}
-              placeholder="What is this withdrawal for?"
-              className="focus:ring-brand-green focus:border-brand-green"
-            />
-          </div>
-
-          {/* Processing Info */}
-          <Alert className="bg-amber-50 border-amber-200 rounded-lg">
-            <Clock className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-800 text-sm">
-              Bank transfers take 2-3 business days to complete. Weekend deposits will be processed on Monday.
-            </AlertDescription>
-          </Alert>
-
-          {/* Submit Button */}
-          <Button
-            type="submit"
-            className="w-full bg-brand-green hover:bg-emerald-600 text-white"
-            disabled={processing || availableBalance < MIN_WITHDRAWAL}
           >
-            {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {processing ? 'Processing...' : `Withdraw $${formData.amount || '0.00'}`}
-          </Button>
-        </form>
+            <option value="">Select where to withdraw</option>
+            {paymentMethods.length > 0 ? (
+              paymentMethods.map((method: any) => (
+                <option key={method._id} value={method._id}>
+                  {method.name} ({method.type === 'card' ? 'Card' : 'Bank'}) - {method.last4}
+                </option>
+              ))
+            ) : (
+              <option value="" disabled>No payment methods found</option>
+            )}
+          </select>
+        )}
+        {errors.paymentMethodId && (
+          <p className="text-xs text-red-500">{errors.paymentMethodId}</p>
+        )}
+        {paymentMethods.length === 0 && !loadingMethods && (
+          <p className="text-xs text-amber-600 mt-1">
+            Please add a payment method in Settings first.
+          </p>
+        )}
+      </div>
+
+      {/* Description */}
+      <div className="space-y-2">
+        <Label htmlFor="description" className="text-sm font-medium text-gray-700">Description (Optional)</Label>
+        <Input
+          id="description"
+          name="description"
+          value={formData.description}
+          onChange={handleChange}
+          disabled={processing}
+          placeholder="What is this withdrawal for?"
+          className="focus:ring-brand-green focus:border-brand-green"
+        />
+      </div>
+
+      {/* Processing Info */}
+      <Alert className="bg-amber-50 border-amber-200 rounded-lg">
+        <Clock className="h-4 w-4 text-amber-600" />
+        <AlertDescription className="text-amber-800 text-sm">
+          Bank transfers take 2-3 business days to complete. Weekend deposits will be processed on Monday.
+        </AlertDescription>
+      </Alert>
+
+      {/* Submit Button */}
+      <Button
+        type="submit"
+        className="w-full bg-brand-green hover:bg-emerald-600 text-white"
+        disabled={processing || availableBalance < MIN_WITHDRAWAL}
+      >
+        {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {processing ? 'Processing...' : `Withdraw $${formData.amount || '0.00'}`}
+      </Button>
+    </form>
   )
 }
 

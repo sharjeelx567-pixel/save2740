@@ -8,7 +8,7 @@ export const depositSchema = z.object({
 
 export const withdrawSchema = z.object({
     amount: z.number().min(10, 'Minimum withdrawal amount is $10').max(50000, 'Maximum withdrawal amount is $50,000'),
-    bankAccountId: z.string().min(1, 'Bank account ID is required'),
+    paymentMethodId: z.string().min(1, 'Payment method ID is required'),
     reason: z.string().optional()
 });
 

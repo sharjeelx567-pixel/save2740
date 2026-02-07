@@ -10,6 +10,7 @@ import { getStripeProcessor } from '../utils/stripe-processor';
 import { User } from '../models/auth.model';
 import crypto from 'crypto';
 import { notifyTransactionSuccess, notifyTransactionFailed } from '../utils/notification-service';
+import mongoose from 'mongoose';
 
 const router = express.Router();
 
@@ -70,7 +71,7 @@ router.get('/transactions/:id', authenticateToken, async (req: AuthRequest, res:
     await connectDB();
 
     const { id } = req.params;
-    
+
     const transaction = await Transaction.findOne({
       $or: [
         { _id: id },
@@ -116,7 +117,7 @@ router.get('/transactions', authenticateToken, async (req: AuthRequest, res: Res
     const limit = query.limit ?? 50;
 
     const filter: any = { userId: req.userId };
-    
+
     if (query.type && query.type !== 'all') {
       filter.type = query.type === 'withdraw' ? { $in: ['withdraw', 'withdrawal'] } : query.type;
     }
@@ -219,7 +220,7 @@ router.post('/deposit', authenticateToken, paymentLimiter, validate(depositSchem
     await connectDB();
 
     const { amount, paymentMethodId, currency = 'usd' } = req.body;
-    
+
     // Idempotency check - prevent replay attacks
     const idempotencyKey = req.headers['idempotency-key'] as string;
     if (idempotencyKey) {
@@ -272,7 +273,7 @@ router.post('/deposit', authenticateToken, paymentLimiter, validate(depositSchem
     ]);
     const todayTotal = todayDeposits[0]?.total || 0;
     const dailyLimit = 5000;
-    
+
     if (todayTotal + amount > dailyLimit) {
       return res.status(400).json({
         success: false,
@@ -295,7 +296,7 @@ router.post('/deposit', authenticateToken, paymentLimiter, validate(depositSchem
     ]);
     const monthlyTotal = monthlyDeposits[0]?.total || 0;
     const monthlyLimit = 50000;
-    
+
     if (monthlyTotal + amount > monthlyLimit) {
       return res.status(400).json({
         success: false,
@@ -311,7 +312,7 @@ router.post('/deposit', authenticateToken, paymentLimiter, validate(depositSchem
 
     try {
       const stripeProcessor = getStripeProcessor();
-      
+
       // Look up the saved payment method to get stripePaymentMethodId
       const { PaymentMethod } = await import('../models/payment-method.model');
       const savedPaymentMethod = await PaymentMethod.findOne({
@@ -360,11 +361,11 @@ router.post('/deposit', authenticateToken, paymentLimiter, validate(depositSchem
 
       stripePaymentIntentId = paymentIntentId;
       clientSecret = secret;
-      
+
       // Check if 3DS is required
       const stripe = stripeProcessor.getStripeInstance();
       const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-      
+
       if (paymentIntent.status === 'requires_action') {
         requiresAction = true;
         transactionStatus = 'pending';
@@ -405,15 +406,15 @@ router.post('/deposit', authenticateToken, paymentLimiter, validate(depositSchem
       await wallet.save();
       transaction.completedAt = new Date();
       await transaction.save();
-      
+
       // Notify user of successful deposit
       await notifyTransactionSuccess(req.userId!, transaction._id.toString(), amount);
     }
 
     const responseData = {
       success: true,
-      message: transactionStatus === 'completed' 
-        ? `Successfully deposited $${amount}` 
+      message: transactionStatus === 'completed'
+        ? `Successfully deposited $${amount}`
         : 'Payment intent created. Please confirm payment.',
       data: {
         wallet,
@@ -441,12 +442,278 @@ router.post('/deposit', authenticateToken, paymentLimiter, validate(depositSchem
   }
 });
 
+// POST /api/wallet/deposit/confirm - Confirm deposit robustly
+router.post('/deposit/confirm', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    await connectDB();
+    const { paymentIntentId } = req.body;
+
+    if (!paymentIntentId) {
+      return res.status(400).json({ success: false, error: 'Payment Intent ID is required' });
+    }
+
+    console.log(`[Deposit Confirm] Checking ${paymentIntentId} for user ${req.userId}`);
+
+    // 1. Fetch from Stripe properly
+    const stripeProcessor = getStripeProcessor();
+    const stripe = stripeProcessor.getStripeInstance();
+
+    let paymentIntent;
+    try {
+      paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    } catch (e: any) {
+      return res.status(404).json({ success: false, error: 'Stripe PaymentIntent not found' });
+    }
+
+    // 2. Security Check: Ensure this payment belongs to the user
+    // We check metadata first, or fall back to finding a local transaction that matches, 
+    // OR matches the wallet's attached Stripe Customer ID (handling DB resets).
+    const paymentUserId = paymentIntent.metadata?.userId;
+    const wallet = await Wallet.findOne({ userId: req.userId });
+
+    // Attempt to find local transaction
+    let transaction = await Transaction.findOne({
+      externalTransactionId: paymentIntentId
+    });
+
+    const isMetadataMatch = paymentUserId === req.userId;
+    const isCustomerMatch = wallet && wallet.stripeCustomerId && (
+      typeof paymentIntent.customer === 'string' ? paymentIntent.customer === wallet.stripeCustomerId :
+        (paymentIntent.customer as any)?.id === wallet.stripeCustomerId
+    );
+    const isTransactionMatch = transaction && transaction.userId === req.userId;
+
+    // Reject if unauthorized
+    if (!transaction && !isMetadataMatch && !isCustomerMatch) {
+      console.warn(`[Deposit 403] Authorization Failed. 
+          Req User: ${req.userId}
+          Meta User: ${paymentUserId}
+          Stripe Cust: ${typeof paymentIntent.customer === 'string' ? paymentIntent.customer : (paymentIntent.customer as any)?.id}
+          Wallet Cust: ${wallet?.stripeCustomerId}
+       `);
+      return res.status(403).json({ success: false, error: 'Payment does not belong to this user (Metadata/Customer mismatch)' });
+    }
+
+    if (transaction && !isTransactionMatch) {
+      return res.status(403).json({ success: false, error: 'Transaction belongs to another user' });
+    }
+
+    // 3. Handle Succeeded State
+    if (paymentIntent.status === 'succeeded') {
+      const amount = paymentIntent.amount / 100; // Convert cents to dollars
+
+      // If transaction exists and is already completed, we are done
+      if (transaction && transaction.status === 'completed') {
+        return res.json({
+          success: true,
+          message: 'Transaction already completed',
+          data: { transaction }
+        });
+      }
+
+      // Use a transaction/lock to ensure we don't double credit
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      try {
+        // Refetch transaction inside lock
+        if (transaction) {
+          transaction = await Transaction.findById(transaction._id).session(session);
+          if (transaction?.status === 'completed') {
+            await session.commitTransaction();
+            return res.json({ success: true, message: 'Already completed' });
+          }
+        } else {
+          // Recover: Create missing transaction record from Stripe data
+          console.log(`[Deposit Confirm] Recovering missing transaction for ${paymentIntentId}`);
+          transaction = new Transaction({
+            userId: req.userId,
+            type: 'deposit',
+            amount: amount,
+            status: 'pending', // Will update to completed below
+            description: 'Wallet Deposit (Recovered)',
+            paymentMethodId: paymentIntent.payment_method as string || 'manual',
+            externalTransactionId: paymentIntentId,
+            metadata: paymentIntent.metadata
+          });
+        }
+
+        // Update Transaction
+        transaction.status = 'completed';
+        transaction.completedAt = new Date();
+        await transaction.save({ session });
+
+        // Update Wallet
+        if (wallet) {
+          wallet.balance += amount;
+          wallet.availableBalance += amount;
+          await wallet.save({ session });
+        } else {
+          // Should not happen, but safeguard
+          await Wallet.create([{
+            userId: req.userId,
+            balance: amount,
+            availableBalance: amount,
+            status: 'active'
+          }], { session });
+        }
+
+        await session.commitTransaction();
+        console.log(`[Deposit Confirm] Success: Credited $${amount} to ${req.userId}`);
+
+        // Notify outside transaction
+        try {
+          await notifyTransactionSuccess(req.userId!, transaction._id.toString(), amount);
+        } catch (err) { console.error("Notification failed", err); }
+
+        return res.json({
+          success: true,
+          message: 'Deposit confirmed and wallet updated',
+          data: {
+            transaction,
+            walletBalance: wallet ? wallet.balance + amount : amount // Optimistic return
+          }
+        });
+
+      } catch (err) {
+        await session.abortTransaction();
+        throw err;
+      } finally {
+        session.endSession();
+      }
+
+    } else if (paymentIntent.status === 'requires_payment_method' || paymentIntent.status === 'canceled') {
+      if (transaction) {
+        transaction.status = 'failed';
+        await transaction.save();
+      }
+      return res.json({ success: false, error: `Payment status: ${paymentIntent.status}` });
+    } else {
+      return res.json({
+        success: false,
+        status: paymentIntent.status,
+        message: 'Payment not yet succeeded'
+      });
+    }
+
+  } catch (error: any) {
+    console.error('Deposit confirmation error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to confirm deposit' });
+  }
+});
+
+// POST /api/wallet/sync - Manual sync for pending transactions
+router.post('/sync', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    await connectDB();
+
+    // ---------------------------------------------------------
+    // NUCLEAR OPTION: DEEP SCAN STRIPE HISTORY
+    // ---------------------------------------------------------
+    const stripeProcessor = getStripeProcessor();
+    const stripe = stripeProcessor.getStripeInstance();
+
+    // Get customer ID
+    const wallet = await Wallet.findOne({ userId: req.userId });
+    if (!wallet || !wallet.stripeCustomerId) {
+      // If no wallet or no stripe ID, we can't scan stripe. 
+      // Just return what we found from pending (which is 0 here)
+      return res.json({ success: true, message: 'No Stripe customer linked yet' });
+    }
+
+    // List recent successful payment intents from Stripe
+    const paymentIntents = await stripe.paymentIntents.list({
+      customer: wallet.stripeCustomerId,
+      limit: 10, // Check last 10 payments
+    });
+
+    let recoveredCount = 0;
+    const session = await mongoose.startSession();
+
+    try {
+      for (const pi of paymentIntents.data) {
+        if (pi.status === 'succeeded') {
+          // Check if we have this transaction
+          const existingTx = await Transaction.findOne({
+            externalTransactionId: pi.id
+          });
+
+          if (!existingTx) {
+            console.log(`[Sync] Found missing Stripe deposit: ${pi.id} for $${pi.amount / 100}`);
+
+            // Create missing transaction
+            session.startTransaction();
+            try {
+              const amount = pi.amount / 100;
+
+              const newTx = new Transaction({
+                userId: req.userId,
+                type: 'deposit',
+                amount: amount,
+                status: 'completed',
+                description: 'Wallet Deposit (Recovered via Sync)',
+                paymentMethodId: (pi.payment_method as string) || 'card',
+                externalTransactionId: pi.id,
+                metadata: pi.metadata,
+                completedAt: new Date(pi.created * 1000) // Use Stripe time
+              });
+              await newTx.save({ session });
+
+              // Credit wallet
+              const w = await Wallet.findOne({ userId: req.userId }).session(session);
+              if (w) {
+                w.balance += amount;
+                w.availableBalance += amount;
+                await w.save({ session });
+              }
+
+              await session.commitTransaction();
+              recoveredCount++;
+
+              // Fire notification
+              notifyTransactionSuccess(req.userId!, newTx._id.toString(), amount).catch(console.error);
+
+            } catch (err) {
+              await session.abortTransaction();
+              console.error(`[Sync] Failed to recover ${pi.id}:`, err);
+            }
+          } else if (existingTx.status === 'pending') {
+            // Fix pending state
+            existingTx.status = 'completed';
+            existingTx.completedAt = new Date();
+            await existingTx.save();
+
+            // Update wallet (careful not to double credit if logic was weird, but pending implies not credited)
+            // We assume pending means not credited yet.
+            wallet.balance += existingTx.amount;
+            wallet.availableBalance += existingTx.amount;
+            await wallet.save();
+            recoveredCount++;
+          }
+        }
+      }
+    } finally {
+      session.endSession();
+    }
+
+    return res.json({
+      success: true,
+      message: `Synced. Recovered ${recoveredCount} transactions from Stripe.`,
+      recovered: recoveredCount
+    });
+
+  } catch (error: any) {
+    console.error('Wallet sync error:', error);
+    res.status(500).json({ success: false, error: 'Failed to sync wallet' });
+  }
+});
+
 // POST /api/wallet/withdraw - Withdraw money from wallet with Stripe
 router.post('/withdraw', authenticateToken, paymentLimiter, validate(withdrawSchema), async (req: AuthRequest, res: Response) => {
   try {
     await connectDB();
 
-    const { amount, bankAccountId, reason } = req.body;
+    const { amount, paymentMethodId, reason } = req.body;
 
     // Idempotency check - prevent replay/double withdrawal
     const idempotencyKey = req.headers['idempotency-key'] as string;
@@ -501,7 +768,7 @@ router.post('/withdraw', authenticateToken, paymentLimiter, validate(withdrawSch
     ]);
     const todayTotal = todayWithdrawals[0]?.total || 0;
     const dailyLimit = 1000;
-    
+
     if (todayTotal + amount > dailyLimit) {
       return res.status(400).json({
         success: false,
@@ -513,15 +780,15 @@ router.post('/withdraw', authenticateToken, paymentLimiter, validate(withdrawSch
     // This ensures concurrent withdrawals don't overdraw the account
     const walletVersion = wallet.__v;
     const updatedWallet = await Wallet.findOneAndUpdate(
-      { 
-        userId: req.userId, 
+      {
+        userId: req.userId,
         availableBalance: { $gte: amount },
         __v: walletVersion // Version check for optimistic locking
       },
-      { 
-        $inc: { 
-          availableBalance: -amount, 
-          pendingWithdrawals: amount 
+      {
+        $inc: {
+          availableBalance: -amount,
+          pendingWithdrawals: amount
         },
         $set: { __v: walletVersion + 1 }
       },
@@ -543,46 +810,85 @@ router.post('/withdraw', authenticateToken, paymentLimiter, validate(withdrawSch
       amount: amount,
       status: 'pending',
       description: reason || 'Wallet Withdrawal',
-      paymentMethodId: bankAccountId,
+      paymentMethodId: paymentMethodId,
       metadata: {
         reason,
         requestedAt: new Date()
       }
     });
 
-    // Process withdrawal via Stripe (async)
+    // Process withdrawal via Stripe (async or sync depending on implementation)
     try {
       const stripeProcessor = getStripeProcessor();
-      // In production, create a Stripe Transfer or Payout here
-      // For now, we'll process it asynchronously
-      // The webhook will update the transaction status
-      
-      // Simulate processing (in production, use Stripe Transfers API)
-      setTimeout(async () => {
-        try {
-          // Update transaction to completed after processing
-          transaction.status = 'completed';
-          transaction.completedAt = new Date();
-          await transaction.save();
 
-          // Update wallet - use findOneAndUpdate for atomicity
-          await Wallet.findOneAndUpdate(
-            { userId: req.userId },
-            { 
-              $inc: { 
-                balance: -amount, 
-                pendingWithdrawals: -amount 
-              } 
-            }
-          );
-        } catch (err) {
-          console.error('Error processing withdrawal:', err);
+      const { PaymentMethod } = await import('../models/payment-method.model');
+      const paymentMethod = await PaymentMethod.findOne({
+        _id: paymentMethodId,
+        userId: req.userId
+      });
+
+      if (!paymentMethod) {
+        throw new Error('Payment method not found');
+      }
+
+      // Simulate processing or call real API
+      const payoutResult = await stripeProcessor.createPayout(
+        amount,
+        'usd',
+        paymentMethod.stripePaymentMethodId, // destination
+        {
+          userId: req.userId,
+          transactionId: transaction._id.toString()
         }
-      }, 2000); // Simulate 2 second processing
+      );
+
+      if (payoutResult.success) {
+        // Update transaction to completed after processing
+        transaction.status = 'completed';
+        transaction.completedAt = new Date();
+        transaction.externalTransactionId = payoutResult.payoutId;
+        await transaction.save();
+
+        // Update wallet - use findOneAndUpdate for atomicity
+        await Wallet.findOneAndUpdate(
+          { userId: req.userId },
+          {
+            $inc: {
+              balance: -amount,
+              pendingWithdrawals: -amount
+            }
+          }
+        );
+      } else {
+        // Failed payout
+        throw new Error(payoutResult.error || 'Payout failed');
+      }
 
     } catch (stripeError: any) {
       console.warn('Stripe withdrawal processing error:', stripeError.message);
-      // Continue with pending status
+      // If payout failed, revert the pending withdrawal and refund available balance?
+      // Or keep as pending/failed for review? Usually failed.
+
+      transaction.status = 'failed';
+      transaction.metadata = { ...transaction.metadata, error: stripeError.message };
+      await transaction.save();
+
+      // Refund the wallet (revert the deduction)
+      await Wallet.findOneAndUpdate(
+        { userId: req.userId },
+        {
+          $inc: {
+            availableBalance: amount, // refund available balance
+            pendingWithdrawals: -amount // remove from pending
+          },
+          $set: { __v: walletVersion + 2 } // increment version again? Or just +1 from original
+        }
+      );
+
+      return res.status(400).json({
+        success: false,
+        error: stripeError.message || 'Withdrawal processing failed'
+      });
     }
 
     const responseData = {
@@ -619,9 +925,9 @@ router.get('/limits', authenticateToken, async (req: AuthRequest, res: Response)
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    
+
     // Get today's deposits
     const todayDeposits = await Transaction.aggregate([
       {
@@ -634,7 +940,7 @@ router.get('/limits', authenticateToken, async (req: AuthRequest, res: Response)
       },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
-    
+
     // Get today's withdrawals
     const todayWithdrawals = await Transaction.aggregate([
       {
@@ -647,7 +953,7 @@ router.get('/limits', authenticateToken, async (req: AuthRequest, res: Response)
       },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
-    
+
     // Get monthly deposits
     const monthlyDeposits = await Transaction.aggregate([
       {
@@ -660,7 +966,7 @@ router.get('/limits', authenticateToken, async (req: AuthRequest, res: Response)
       },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
-    
+
     // Get monthly withdrawals
     const monthlyWithdrawals = await Transaction.aggregate([
       {
@@ -673,7 +979,7 @@ router.get('/limits', authenticateToken, async (req: AuthRequest, res: Response)
       },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
-    
+
     const limits = {
       daily: {
         deposit: {
@@ -706,7 +1012,7 @@ router.get('/limits', authenticateToken, async (req: AuthRequest, res: Response)
         maxWithdrawal: 50000
       }
     };
-    
+
     res.json({ success: true, data: limits });
   } catch (error) {
     console.error('Get wallet limits error:', error);
@@ -725,7 +1031,7 @@ router.get('/transactions/export/csv', authenticateToken, async (req: AuthReques
     const { startDate, endDate, type } = req.query;
 
     const filter: any = { userId: req.userId };
-    
+
     if (type && type !== 'all') {
       filter.type = type;
     }
@@ -810,7 +1116,7 @@ router.post('/freeze', authenticateToken, async (req: AuthRequest, res: Response
 
     const { reason } = req.body;
     const wallet = await Wallet.findOne({ userId: req.userId });
-    
+
     if (!wallet) {
       return res.status(404).json({
         success: false,
@@ -843,7 +1149,7 @@ router.post('/unfreeze', authenticateToken, async (req: AuthRequest, res: Respon
     await connectDB();
 
     const wallet = await Wallet.findOne({ userId: req.userId });
-    
+
     if (!wallet) {
       return res.status(404).json({
         success: false,
@@ -884,7 +1190,7 @@ router.post('/transactions/:id/cancel', authenticateToken, async (req: AuthReque
     await connectDB();
 
     const { id } = req.params;
-    
+
     const transaction = await Transaction.findOne({
       $or: [{ _id: id }, { transactionId: id }],
       userId: req.userId,
@@ -910,11 +1216,11 @@ router.post('/transactions/:id/cancel', authenticateToken, async (req: AuthReque
     if (transaction.type === 'withdrawal' || transaction.type === 'withdraw') {
       await Wallet.findOneAndUpdate(
         { userId: req.userId },
-        { 
-          $inc: { 
+        {
+          $inc: {
             availableBalance: transaction.amount,
-            pendingWithdrawals: -transaction.amount 
-          } 
+            pendingWithdrawals: -transaction.amount
+          }
         }
       );
     }
@@ -948,7 +1254,7 @@ router.post('/transactions/:id/retry', authenticateToken, async (req: AuthReques
     await connectDB();
 
     const { id } = req.params;
-    
+
     const transaction = await Transaction.findOne({
       $or: [{ _id: id }, { transactionId: id }],
       userId: req.userId,
@@ -965,7 +1271,7 @@ router.post('/transactions/:id/retry', authenticateToken, async (req: AuthReques
     // Check retry limit
     const retries = transaction.metadata?.retries || 0;
     const maxRetries = 3;
-    
+
     if (retries >= maxRetries) {
       return res.status(400).json({
         success: false,
@@ -1006,7 +1312,7 @@ router.post('/transactions/:id/retry', authenticateToken, async (req: AuthReques
     } else if (transaction.type === 'withdrawal' || transaction.type === 'withdraw') {
       // For withdrawals, check balance and re-initiate
       const wallet = await Wallet.findOne({ userId: req.userId });
-      
+
       if (!wallet || wallet.availableBalance < transaction.amount) {
         return res.status(400).json({
           success: false,
@@ -1024,11 +1330,11 @@ router.post('/transactions/:id/retry', authenticateToken, async (req: AuthReques
       // Lock funds again
       await Wallet.findOneAndUpdate(
         { userId: req.userId },
-        { 
-          $inc: { 
+        {
+          $inc: {
             availableBalance: -transaction.amount,
-            pendingWithdrawals: transaction.amount 
-          } 
+            pendingWithdrawals: transaction.amount
+          }
         }
       );
 

@@ -40,11 +40,11 @@ export function useWallet(
       return response.data;
     },
     enabled: shouldFetch,
-    refetchInterval: false, // PERFORMANCE: Don't auto-poll
-    refetchOnWindowFocus: false, // PERFORMANCE: Manual refresh only
+    refetchInterval: false,
+    refetchOnWindowFocus: true, // Auto refresh on focus
     refetchOnReconnect: refetchOnOnline,
-    refetchOnMount: false, // PERFORMANCE: Use cached data on navigation
-    staleTime: 2 * 60 * 1000, // PERFORMANCE: 2 minutes - reduces refetching
+    refetchOnMount: true, // Always check for updates
+    staleTime: 0, // Always fetch fresh data
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     retry: 1,
   });

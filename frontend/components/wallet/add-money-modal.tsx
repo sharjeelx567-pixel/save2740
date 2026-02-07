@@ -10,7 +10,7 @@ import { Loader2, DollarSign, AlertCircle, Check, CreditCard, Building2 } from "
 import { loadStripe } from "@stripe/stripe-js"
 import { toast } from "sonner"
 import { useWallet } from "@/hooks/use-wallet"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 
 interface AddMoneyModalProps {
     isOpen: boolean
@@ -29,6 +29,7 @@ interface PaymentMethod {
 
 
 export function AddMoneyModal({ isOpen, onClose, onSuccess, initialAmount }: AddMoneyModalProps) {
+    const queryClient = useQueryClient()
     const [amount, setAmount] = useState(initialAmount ? initialAmount.toString() : "")
     const [selectedMethod, setSelectedMethod] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
@@ -48,7 +49,7 @@ export function AddMoneyModal({ isOpen, onClose, onSuccess, initialAmount }: Add
                 const methods = res.data?.data || res.data || []
                 console.log('[AddMoneyModal] Extracted methods:', methods)
                 if (!Array.isArray(methods)) return []
-                
+
                 // Transform to expected format
                 const transformed = methods.map((m: any) => ({
                     _id: m._id || m.id,
@@ -118,18 +119,38 @@ export function AddMoneyModal({ isOpen, onClose, onSuccess, initialAmount }: Add
 
             if (response.success && response.data) {
                 // Handle both response structures: { data: {...} } or direct {...}
-                const responseData = response.data.data || response.data
+                const responseData = (response.data as any).data || response.data
+                console.log("Deposit response:", responseData);
 
                 // Handle 3D Secure if needed
                 if (responseData.requiresAction && responseData.clientSecret) {
                     const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '')
                     if (stripe) {
-                        const { error: stripeError } = await stripe.confirmCardPayment(responseData.clientSecret)
+                        const { paymentIntent, error: stripeError } = await stripe.confirmCardPayment(responseData.clientSecret)
                         if (stripeError) throw new Error(stripeError.message)
+
+                        // Payment confirmed on client side, now verify with backend and update wallet
+                        if (paymentIntent && paymentIntent.status === 'succeeded') {
+                            await apiClient.post('/api/wallet/deposit/confirm', {
+                                paymentIntentId: paymentIntent.id
+                            });
+                        }
+                    }
+                } else {
+                    // Check if transaction is pending but not requiring action (rare in sandbox but good for safety)
+                    // or if we just need to ensure backend sync
+                    const tx: any = responseData.transaction || {}
+                    if (tx && tx.externalTransactionId) {
+                        // Force a check with the backend for ANY transaction state to ensure wallet sync
+                        await apiClient.post('/api/wallet/deposit/confirm', {
+                            paymentIntentId: tx.externalTransactionId
+                        });
                     }
                 }
 
-                // Wallet balance will be refreshed when onSuccess() triggers a refetch
+                // Force refresh of wallet data
+                await queryClient.invalidateQueries({ queryKey: ['wallet'] })
+
                 toast.success(`Successfully added $${numAmount.toFixed(2)}!`)
                 onSuccess()
                 onClose()
