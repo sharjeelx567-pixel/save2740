@@ -15,7 +15,7 @@ export function PendingFailedTransactions() {
     return (
       <div className="space-y-4">
         {[...Array(2)].map((_, i) => (
-          <Skeleton key={i} className="h-24" />
+          <Skeleton key={`skeleton-${i}`} className="h-24" />
         ))}
       </div>
     )
@@ -42,9 +42,9 @@ export function PendingFailedTransactions() {
           </div>
 
           <div className="p-6 space-y-3">
-            {pendingTransactions.map((tx) => (
+            {pendingTransactions.map((tx, index) => (
               <div
-                key={tx.id}
+                key={tx.id || `pending-tx-${index}`}
                 className="flex items-center justify-between p-4 bg-white rounded-lg border border-green-100"
               >
                 <div className="flex items-center gap-4">
@@ -91,9 +91,9 @@ export function PendingFailedTransactions() {
           </div>
 
           <div className="p-6 space-y-3">
-            {failedTransactions.map((tx) => (
+            {failedTransactions.map((tx, index) => (
               <div
-                key={tx.id}
+                key={tx.id || `failed-tx-${index}`}
                 className="flex items-center justify-between p-4 bg-white rounded-lg border border-red-100"
               >
                 <div className="flex items-center gap-4">
@@ -131,3 +131,4 @@ export function PendingFailedTransactions() {
     </div>
   )
 }
+

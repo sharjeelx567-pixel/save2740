@@ -4,6 +4,10 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { CreditCard, Zap, ReceiptText, AlertTriangle } from 'lucide-react';
 
+// Force dynamic rendering - never cache
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: 'Payments & Banking | Saver App',
   description: 'Manage payments, auto-debits, and banking',
@@ -117,3 +121,4 @@ export default function PaymentsPage() {
     </main>
   );
 }
+

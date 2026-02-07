@@ -377,3 +377,4 @@ export function Sidebar({ onClose }: SidebarProps) {
     </div>
   )
 }
+

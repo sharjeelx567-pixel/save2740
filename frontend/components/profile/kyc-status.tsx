@@ -54,7 +54,10 @@ export function KYCStatus() {
         const response = await fetch(`${API.BASE_URL}/api/kyc/status`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
           },
+          cache: 'no-store',
         })
 
         if (!response.ok) throw new Error('Failed to fetch KYC status')
@@ -124,10 +127,33 @@ export function KYCStatus() {
 
     try {
       const formData = new FormData()
-      formData.append('file', file)
-      formData.append('documentType', documentType)
 
-      const response = await fetch(`${API.BASE_URL}/api/kyc/documents`, {
+      // Map document types to backend endpoints and form field names
+      let endpoint = ''
+      let fieldName = ''
+
+      switch (documentType) {
+        case 'id_front':
+        case 'id_back':
+          endpoint = '/api/kyc/upload-id'
+          fieldName = documentType === 'id_front' ? 'idFront' : 'idBack'
+          formData.append(fieldName, file)
+          break
+        case 'selfie':
+          endpoint = '/api/kyc/selfie'
+          fieldName = 'selfie'
+          formData.append(fieldName, file)
+          break
+        case 'address_proof':
+          endpoint = '/api/kyc/address'
+          fieldName = 'document'
+          formData.append(fieldName, file)
+          break
+        default:
+          throw new Error('Invalid document type')
+      }
+
+      const response = await fetch(`${API.BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
@@ -140,17 +166,37 @@ export function KYCStatus() {
         throw new Error(error.error || 'Upload failed')
       }
 
-      const { completionPercentage } = await response.json()
+      const result = await response.json()
       setUploadProgress(100)
 
-      if (kycStatus) {
+      // Update KYC status with uploaded document
+      if (kycStatus && result.success) {
+        const updatedDocs = { ...kycStatus.documents }
+        const docKey = documentType === 'id_front' ? 'idFront' :
+          documentType === 'id_back' ? 'idBack' :
+            documentType === 'address_proof' ? 'addressProof' : 'selfie'
+
+        updatedDocs[docKey as keyof KYCStatus['documents']] = {
+          uploadedAt: new Date().toISOString(),
+          status: 'pending_review',
+          url: result.data?.frontUrl || result.data?.backUrl || result.data?.selfieUrl || result.data?.addressUrl
+        }
+
+        // Calculate completion percentage
+        const totalDocs = 4
+        const uploadedCount = Object.keys(updatedDocs).length
+        const completionPercentage = Math.round((uploadedCount / totalDocs) * 100)
+
         setKYCStatus({
           ...kycStatus,
+          documents: updatedDocs,
           completionPercentage,
+          // Removed auto-setting status to 'pending' here so user can click Submit
         })
       }
     } catch (error) {
       console.error('Error uploading document:', error)
+      alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
       setPreviewUrls(prev => {
         const newPreviews = { ...prev }
         delete newPreviews[documentType]
@@ -162,6 +208,65 @@ export function KYCStatus() {
         setUploadingType(null)
         setUploadProgress(0)
       }, 500)
+    }
+  }
+
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async () => {
+    if (!kycStatus) return
+
+    try {
+      setSubmitting(true)
+
+      const payload = {
+        documentType: 'national_id', // Default
+        documentNumber: 'PENDING-REVIEW', // Placeholder
+        documentFront: kycStatus.documents.idFront?.url,
+        documentBack: kycStatus.documents.idBack?.url,
+        selfie: kycStatus.documents.selfie?.url,
+        firstName: 'Valued', // Placeholder - ideally from profile
+        lastName: 'User',    // Placeholder
+        dateOfBirth: '2000-01-01', // Placeholder
+        address: {
+          street: '123 Main St',
+          city: 'Anytown',
+          state: 'State',
+          zipCode: '00000',
+          country: 'Country'
+        },
+        ssn: '000-00-0000' // Placeholder
+      }
+
+      // Check if critical docs are missing
+      if (!payload.documentFront || !payload.selfie) {
+        throw new Error('Please upload Front ID and Selfie at minimum.')
+      }
+
+      const response = await fetch(`${API.BASE_URL}/api/kyc/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+        },
+        body: JSON.stringify(payload)
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Submission failed')
+      }
+
+      // Success
+      setKYCStatus(prev => prev ? ({ ...prev, status: 'pending' }) : null)
+      alert('KYC Validation Submitted Successfully!')
+
+    } catch (error: any) {
+      console.error('Submit error:', error)
+      alert(error.message || 'Failed to submit KYC')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -397,10 +502,16 @@ export function KYCStatus() {
           {kycStatus.status !== 'verified' && (
             <div className="pt-6 border-t border-slate-200">
               <Button
-                disabled={kycStatus.status === 'pending'}
-                className="w-full bg-brand-green hover:bg-brand-green/90 text-white font-bold py-4 rounded-xl transition-all text-base font-geist shadow-lg hover:shadow-xl"
+                disabled={kycStatus.status === 'pending' || submitting}
+                onClick={handleSubmit}
+                className="w-full bg-brand-green hover:bg-brand-green/90 text-white font-bold py-4 rounded-xl transition-all text-base font-geist shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {kycStatus.status === 'pending' ? (
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : kycStatus.status === 'pending' ? (
                   <>
                     <Clock className="w-5 h-5 mr-2" />
                     Documents Under Review
@@ -449,3 +560,4 @@ export function KYCStatus() {
     </div>
   )
 }
+

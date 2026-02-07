@@ -42,6 +42,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       purpose,
       contributionAmount,
       frequency,
+      minMembers,
       maxMembers,
       startDate,
       payoutOrderRule
@@ -52,6 +53,25 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
         success: false,
         error: 'Name and contribution amount are required'
       });
+    }
+
+    // Smart Group Size Validation
+    // 2-5 users → personal, high accountability
+    // 6-10 users → best balance (recommended) ⭐
+    // 11-20 users → community feel, still manageable
+    // >20 users → NOT recommended (low engagement, chaos)
+    const HARD_MIN = 2;
+    const HARD_MAX = 20;
+    const DEFAULT_MIN = 2;
+    const DEFAULT_MAX = 10;
+
+    const validatedMinMembers = Math.max(HARD_MIN, Math.min(minMembers || DEFAULT_MIN, 10));
+    const validatedMaxMembers = Math.max(validatedMinMembers, Math.min(maxMembers || DEFAULT_MAX, HARD_MAX));
+
+    // Warn if group is too large
+    let sizeWarning = null;
+    if (validatedMaxMembers > 10 && validatedMaxMembers <= 20) {
+      sizeWarning = 'Groups with 11-20 members can work but may have lower engagement. Consider 6-10 members for best results.';
     }
 
     const user = await User.findById(req.userId);
@@ -66,7 +86,8 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       purpose: purpose || `${name} Savings Group`,
       contributionAmount,
       frequency: frequency || 'monthly',
-      maxMembers: maxMembers || 10,
+      minMembers: validatedMinMembers,
+      maxMembers: validatedMaxMembers,
       payoutOrderRule: payoutOrderRule || 'as-joined',
       startDate: startDate || new Date(),
       status: 'open',
@@ -83,7 +104,9 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
         email: user.email,
         joinedAt: new Date(),
         totalContributed: 0,
-        payoutPosition: 1
+        payoutPosition: 1,
+        status: 'active',
+        missedContributions: 0
       }]
     });
 
@@ -91,7 +114,8 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
 
     res.status(201).json({
       success: true,
-      data: group
+      data: group,
+      sizeWarning
     });
   } catch (error) {
     console.error('Create group error:', error);
@@ -146,7 +170,9 @@ router.post('/join', authenticateToken, async (req: AuthRequest, res: Response) 
   try {
     await connectDB();
 
-    const { joinCode } = req.body; // Changed from inviteCode
+    const { joinCode } = req.body;
+    console.log(`[DEBUG] Join Request - Body:`, req.body);
+    console.log(`[DEBUG] Searching for JoinCode: '${joinCode}'`);
 
     if (!joinCode) {
       return res.status(400).json({
@@ -156,6 +182,16 @@ router.post('/join', authenticateToken, async (req: AuthRequest, res: Response) 
     }
 
     const group = await Group.findOne({ joinCode: joinCode.toUpperCase() });
+
+    if (group) {
+      console.log(`[DEBUG] Found group: ${group.name} (${group._id})`);
+    } else {
+      console.log(`[DEBUG] Group not found for code: ${joinCode.toUpperCase()}`);
+
+      // Debug: List all available codes to see what's in DB
+      const allGroups = await Group.find({}, 'joinCode');
+      console.log(`[DEBUG] Available Codes: ${allGroups.map(g => g.joinCode).join(', ')}`);
+    }
 
     if (!group) {
       return res.status(404).json({
@@ -176,11 +212,27 @@ router.post('/join', authenticateToken, async (req: AuthRequest, res: Response) 
       });
     }
 
-    // Check capacity
-    if (group.members.length >= (group.maxMembers || 10)) {
+    // Check if group is locked (no new members allowed)
+    if (group.status === 'locked' || group.status === 'active') {
       return res.status(400).json({
         success: false,
-        error: 'Group is full'
+        error: 'This group is locked and no longer accepting new members.'
+      });
+    }
+
+    // Check capacity with smart limits
+    const maxLimit = Math.min(group.maxMembers || 10, 20); // Hard cap at 20
+    if (group.members.length >= maxLimit) {
+      return res.status(400).json({
+        success: false,
+        error: 'This group is full. Please join another group or create a new one.',
+        details: {
+          currentMembers: group.members.length,
+          maxMembers: maxLimit,
+          suggestion: group.members.length >= 20 
+            ? 'Consider creating a new group for better engagement.'
+            : 'Try joining a different group or start your own.'
+        }
       });
     }
 
@@ -190,19 +242,32 @@ router.post('/join', authenticateToken, async (req: AuthRequest, res: Response) 
 
     // Add member
     group.members.push({
-      userId: user._id, // Mongoose handles casting automatically for document updates
+      userId: user._id,
       name: `${user.firstName} ${user.lastName || ''}`.trim(),
       email: user.email,
       joinedAt: new Date(),
       totalContributed: 0,
-      payoutPosition: group.members.length + 1
+      payoutPosition: group.members.length + 1,
+      status: 'active',
+      missedContributions: 0
     });
 
     group.currentMembers = group.members.length;
 
     if (group.currentMembers >= group.maxMembers) {
-      group.status = 'filled';
+      group.status = 'locked';
       group.filledDate = new Date();
+
+      // Auto-lock the group
+      const { lockGroupIfFull } = await import('../services/group-contribution.service');
+      await group.save(); // Save first to ensure all members are in DB
+      await lockGroupIfFull(group._id as mongoose.Types.ObjectId);
+
+      // Reload to get updated locked status
+      const updatedGroup = await Group.findById(group._id);
+      if (updatedGroup) {
+        return res.json({ success: true, data: updatedGroup });
+      }
     }
 
     await group.save();
@@ -227,35 +292,35 @@ router.post('/leave', authenticateToken, async (req: AuthRequest, res: Response)
     const { groupId } = req.body;
 
     if (!groupId) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Group ID is required' 
+      return res.status(400).json({
+        success: false,
+        error: 'Group ID is required'
       });
     }
 
     // Validate groupId format
     if (!mongoose.Types.ObjectId.isValid(groupId)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid group ID format' 
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid group ID format'
       });
     }
 
     const group = await Group.findById(groupId);
     if (!group) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Group not found' 
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
       });
     }
 
     // Check if user is a member
     const isMember = group.members.some(m => m.userId.toString() === req.userId);
-    
+
     if (!isMember) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'You are not a member of this group' 
+      return res.status(400).json({
+        success: false,
+        error: 'You are not a member of this group'
       });
     }
 
@@ -270,8 +335,8 @@ router.post('/leave', authenticateToken, async (req: AuthRequest, res: Response)
 
     await group.save();
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Successfully left group',
       data: {
         groupId: group._id,
@@ -281,8 +346,8 @@ router.post('/leave', authenticateToken, async (req: AuthRequest, res: Response)
 
   } catch (error) {
     console.error('Leave group error:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: 'Failed to leave group',
       details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     });
@@ -294,7 +359,7 @@ router.post('/:id/contribute', authenticateToken, async (req: AuthRequest, res: 
   try {
     await connectDB();
     const groupId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { amount, description } = req.body;
+    const { amount } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(groupId)) {
       return res.status(400).json({
@@ -310,81 +375,21 @@ router.post('/:id/contribute', authenticateToken, async (req: AuthRequest, res: 
       });
     }
 
-    const group = await Group.findById(groupId);
-    if (!group) {
-      return res.status(404).json({
-        success: false,
-        error: 'Group not found'
-      });
-    }
+    // Use the new group contribution service
+    const { processGroupContribution } = await import('../services/group-contribution.service');
 
-    // Check if user is a member
-    const member = group.members.find(m => m.userId.toString() === req.userId);
-    if (!member) {
-      return res.status(403).json({
-        success: false,
-        error: 'You are not a member of this group'
-      });
-    }
-
-    // Check wallet balance
-    const wallet = await Wallet.findOne({ userId: req.userId });
-    if (!wallet || wallet.availableBalance < amount) {
-      return res.status(400).json({
-        success: false,
-        error: 'Insufficient balance'
-      });
-    }
-
-    // Create transaction
-    const transaction = await Transaction.create({
-      userId: req.userId,
-      type: 'debit',
-      amount,
-      description: description || 'Group contribution',
-      status: 'completed',
-      metadata: {
-        groupId,
-        groupName: group.name,
-        contributionType: 'group'
-      }
-    });
-
-    // Update wallet
-    wallet.availableBalance -= amount;
-    wallet.locked += amount;
-    await wallet.save();
-
-    // Update member contribution
-    member.totalContributed = (member.totalContributed || 0) + amount;
-
-    // Update group totals
-    group.totalBalance = (group.totalBalance || 0) + amount;
-    await group.save();
-
-    // Get user for member name
-    const user = await User.findById(req.userId);
+    const result = await processGroupContribution(groupId, req.userId!, amount);
 
     res.json({
       success: true,
-      data: {
-        transaction: {
-          id: transaction._id,
-          memberId: req.userId,
-          memberName: user ? `${user.firstName} ${user.lastName}` : 'Unknown',
-          amount,
-          date: new Date().toISOString(),
-          description: description || 'Group contribution',
-          status: 'completed'
-        }
-      }
+      data: result
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Group contribution error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to process contribution'
+      error: error.message || 'Failed to process contribution'
     });
   }
 });
@@ -517,13 +522,15 @@ router.post('/:id/join', authenticateToken, async (req: AuthRequest, res: Respon
       email: user.email,
       joinedAt: new Date(),
       totalContributed: 0,
-      payoutPosition: group.currentMembers + 1
+      payoutPosition: group.currentMembers + 1,
+      status: 'active',
+      missedContributions: 0
     });
 
     group.currentMembers += 1;
 
     if (group.currentMembers >= group.maxMembers) {
-      group.status = 'filled';
+      group.status = 'locked';
       group.filledDate = new Date();
     }
 
@@ -545,6 +552,65 @@ router.post('/:id/join', authenticateToken, async (req: AuthRequest, res: Respon
     res.status(500).json({
       success: false,
       error: 'Failed to join group'
+    });
+  }
+});
+
+// POST /api/groups/:id/lock - Lock group to prevent new members (admin only)
+router.post('/:id/lock', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    await connectDB();
+    const groupId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(groupId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid group ID format'
+      });
+    }
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Only creator (admin) can lock the group
+    if (group.creatorId.toString() !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only the group admin can lock this group'
+      });
+    }
+
+    // Check if already locked
+    if (group.status === 'locked' || group.status === 'active') {
+      return res.status(400).json({
+        success: false,
+        error: `Group is already ${group.status}`
+      });
+    }
+
+    // Lock the group
+    group.status = 'locked';
+    group.lockedDate = new Date();
+    group.totalRounds = group.members.length;
+
+    await group.save();
+
+    res.json({
+      success: true,
+      message: 'Group locked successfully. No new members can join.',
+      data: group
+    });
+
+  } catch (error) {
+    console.error('Lock group error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to lock group'
     });
   }
 });
@@ -602,6 +668,120 @@ router.post('/:id/leave', authenticateToken, async (req: AuthRequest, res: Respo
       success: false,
       error: 'Failed to leave group'
     });
+  }
+});
+
+// ==================== ROUND MANAGEMENT ====================
+
+// GET /api/groups/:id/rounds - Get all rounds for a group
+router.get('/:id/rounds', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    await connectDB();
+    const groupId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(groupId)) {
+      return res.status(400).json({ success: false, error: 'Invalid group ID format' });
+    }
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ success: false, error: 'Group not found' });
+    }
+
+    const isMember = group.members.some(m => m.userId.toString() === req.userId);
+    if (!isMember) {
+      return res.status(403).json({ success: false, error: 'You are not a member of this group' });
+    }
+
+    res.json({
+      success: true,
+      data: { currentRound: group.currentRound, totalRounds: group.totalRounds, rounds: group.rounds }
+    });
+  } catch (error) {
+    console.error('Get rounds error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch rounds' });
+  }
+});
+
+// GET /api/groups/:id/ledger - Get group ledger
+router.get('/:id/ledger', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    await connectDB();
+    const groupId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(groupId)) {
+      return res.status(400).json({ success: false, error: 'Invalid group ID format' });
+    }
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ success: false, error: 'Group not found' });
+    }
+
+    const isMember = group.members.some(m => m.userId.toString() === req.userId);
+    if (!isMember) {
+      return res.status(403).json({ success: false, error: 'Not a group member' });
+    }
+
+    const ledger = group.rounds.map(round => ({
+      roundNumber: round.roundNumber,
+      dueDate: round.dueDate,
+      recipient: round.recipientName,
+      expectedAmount: round.expectedAmount,
+      collectedAmount: round.collectedAmount,
+      status: round.status,
+      contributions: round.contributions.length,
+      payoutDate: round.payoutDate
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        groupName: group.name,
+        status: group.status,
+        currentRound: group.currentRound,
+        escrowBalance: group.escrowBalance,
+        totalPaidOut: group.totalPaidOut,
+        chainBreaks: group.chainBreaks.length,
+        ledger
+      }
+    });
+  } catch (error) {
+    console.error('Get ledger error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch ledger' });
+  }
+});
+
+// POST /api/groups/:id/start - Manually start a group
+router.post('/:id/start', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    await connectDB();
+    const groupId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(groupId)) {
+      return res.status(400).json({ success: false, error: 'Invalid group ID' });
+    }
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ success: false, error: 'Group not found' });
+    }
+
+    if (group.creatorId.toString() !== req.userId) {
+      return res.status(403).json({ success: false, error: 'Only creator can start group' });
+    }
+
+    if (group.status !== 'locked') {
+      return res.status(400).json({ success: false, error: 'Group must be locked first' });
+    }
+
+    const { initializeGroupRounds } = await import('../services/group-contribution.service');
+    const updated = await initializeGroupRounds(groupId);
+
+    res.json({ success: true, data: updated });
+  } catch (error: any) {
+    console.error('Start group error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

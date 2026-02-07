@@ -21,7 +21,7 @@ export interface WalletState {
   ledger: LedgerEntry[]
 }
 
-const DAILY_SAVINGS_AMOUNT = 27.4
+import { DAILY_SAVINGS_AMOUNT } from '../config/payment-architecture'
 
 /**
  * Process daily $27.40 savings

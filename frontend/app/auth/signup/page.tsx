@@ -1,22 +1,39 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Eye, EyeOff } from "lucide-react";
 import { API } from "@/lib/constants";
+import { useAuth } from "@/context/auth-context";
 
-export default function SignUpPage() {
+function SignUpContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { logout, isAuthenticated, loading } = useAuth();
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // Capture referral code from URL
+    const ref = searchParams.get('ref');
+    if (ref) {
+      setReferralCode(ref);
+      console.log('[Signup] Referral code captured:', ref);
+
+      // If user is already logged in but visiting with a referral code, 
+      // assume they want to create a new account and logout the current one.
+      if (!loading && isAuthenticated) {
+        console.log('[Signup] Logging out existing user for referral signup');
+        logout();
+      }
+    }
+  }, [searchParams, loading, isAuthenticated, logout]);
 
   // Step 1 - Profile Setup
   const [profileData, setProfileData] = useState({
@@ -81,15 +98,24 @@ export default function SignUpPage() {
 
       const apiUrl = API.BASE_URL;
       console.log('Signup Debug - Target API URL:', apiUrl); // Debug log
+      if (referralCode) {
+        console.log('Signup Debug - Using referral code:', referralCode);
+      }
+      const nameParts = profileData.firstName.trim().split(' ');
+      const firstNameToSend = nameParts[0];
+      const lastNameToSend = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0]; // Fallback to first name if no last name
+
       const response = await fetch(`${apiUrl}/api/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          firstName: profileData.firstName,
+          firstName: firstNameToSend,
+          lastName: lastNameToSend,
           email: profileData.email,
           password: profileData.password,
           selectedChallenge: challengeData.selectedChallenge,
           multiplier: challengeData.selectedMultiplier,
+          referralCode: referralCode || undefined, // Include referral code if present
         }),
         credentials: "include",
       });
@@ -155,9 +181,19 @@ export default function SignUpPage() {
         {step === 1 && (
           <div className="max-w-md mx-auto">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Create Account</h2>
-            <p className="text-gray-600 text-xs sm:text-sm mb-8">
+            <p className="text-gray-600 text-xs sm:text-sm mb-4">
               Let's get your profile set up to track your progress.
             </p>
+
+            {/* Referral Code Badge */}
+            {referralCode && (
+              <div className="mb-6 p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2">
+                <span className="text-emerald-600 text-sm">🎉 You were referred by a friend!</span>
+                <span className="bg-emerald-100 text-emerald-700 text-xs font-mono px-2 py-1 rounded">
+                  {referralCode}
+                </span>
+              </div>
+            )}
 
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -355,5 +391,20 @@ export default function SignUpPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-green mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SignUpContent />
+    </Suspense>
   );
 }

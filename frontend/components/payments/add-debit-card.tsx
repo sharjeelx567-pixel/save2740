@@ -382,3 +382,4 @@ export function AddDebitCard({ onSuccess }: AddDebitCardProps) {
     </Card>
   );
 }
+

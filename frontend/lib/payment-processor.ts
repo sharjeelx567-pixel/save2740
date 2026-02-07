@@ -221,3 +221,4 @@ export class MockPaymentProcessor implements IPaymentProcessor {
 
 // Register mock processor by default
 PaymentProcessorFactory.register('mock', new MockPaymentProcessor());
+

@@ -3,6 +3,7 @@
 import { Flame, Calendar, Target, TrendingUp } from "lucide-react"
 import { useWallet } from "@/hooks/use-wallet"
 import { Skeleton } from "@/components/ui/skeleton"
+import { FINANCIAL } from "@/lib/constants"
 
 /**
  * SavingsStreakScreen Component
@@ -25,7 +26,7 @@ export function SavingsStreakScreen() {
   }
 
   const currentStreak = data?.currentStreak || 0
-  const dailyAmount = data?.dailySavingAmount || 27.4
+  const dailyAmount = data?.dailySavingAmount || FINANCIAL.DAILY_SAVINGS_AMOUNT
   const balance = data?.balance || 0
 
   // Calculate projections
@@ -37,7 +38,7 @@ export function SavingsStreakScreen() {
   )
   const remainingDays = daysInYear - daysCompleted
   const projectedTotal = balance + dailyAmount * remainingDays
-  const yearlyGoal = 10000
+  const yearlyGoal = FINANCIAL.YEARLY_SAVINGS_GOAL
 
   // Streak milestones
   const streakMilestones = [
@@ -218,3 +219,4 @@ export function SavingsStreakScreen() {
     </div>
   )
 }
+

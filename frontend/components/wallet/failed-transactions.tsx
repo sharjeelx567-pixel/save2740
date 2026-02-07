@@ -24,6 +24,7 @@ import {
   RefreshCw,
   Mail,
 } from 'lucide-react'
+import { WalletService } from '@/lib/wallet-service'
 
 interface FailedTransaction {
   id: string
@@ -52,18 +53,14 @@ export function FailedTransactions() {
       setError(null)
 
       try {
-        const response = await fetch('/api/wallet/transactions?status=failed', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
-          },
-        })
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch transactions')
+        const response = await WalletService.getFailedTransactions()
+        if (response.success && response.data) {
+          const data = response.data.data || response.data
+          setTransactions(data.transactions || [])
+        } else {
+          const errorMsg = typeof response.error === 'string' ? response.error : (response.error?.error || 'Failed to fetch transactions');
+          throw new Error(errorMsg);
         }
-
-        const result = await response.json()
-        setTransactions(result.transactions || [])
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to load transactions'
         setError(message)
@@ -250,3 +247,4 @@ export function FailedTransactions() {
     </Card>
   )
 }
+

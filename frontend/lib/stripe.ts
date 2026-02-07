@@ -135,3 +135,4 @@ export async function confirmPaymentIntent(paymentIntentId: string, paymentMetho
 }
 
 export default stripe
+

@@ -94,11 +94,15 @@ export function WithdrawMoney() {
     setProcessing(true)
 
     try {
+      // Generate idempotency key to prevent duplicate withdrawals
+      const idempotencyKey = `withdraw-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
       const response = await fetch('/api/wallet/withdraw', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+          'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify({
           amount: parseFloat(formData.amount),
@@ -298,3 +302,4 @@ export function WithdrawMoney() {
         </form>
   )
 }
+

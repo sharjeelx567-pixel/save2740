@@ -18,14 +18,14 @@ export class StripePaymentProcessor implements IPaymentProcessor {
 
     constructor() {
         const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET;
-        
+
         if (!stripeSecretKey) {
             console.warn('⚠️  Stripe secret key not configured');
             throw new Error('Stripe secret key is required');
         }
 
         this.stripe = new Stripe(stripeSecretKey, {
-            apiVersion: '2025-12-15.clover'
+            apiVersion: '2026-01-28.clover'
         });
     }
 
@@ -137,11 +137,11 @@ export class StripePaymentProcessor implements IPaymentProcessor {
                 amount: request.amount,
                 fee: fee.amount,
                 net: request.amount - fee.amount,
-                status: paymentIntent.status === 'succeeded' ? 'completed' : 
-                        paymentIntent.status === 'processing' ? 'pending' : 'failed',
-                message: paymentIntent.status === 'succeeded' ? 
-                        'Payment processed successfully' : 
-                        `Payment status: ${paymentIntent.status}`
+                status: paymentIntent.status === 'succeeded' ? 'completed' :
+                    paymentIntent.status === 'processing' ? 'pending' : 'failed',
+                message: paymentIntent.status === 'succeeded' ?
+                    'Payment processed successfully' :
+                    `Payment status: ${paymentIntent.status}`
             };
         } catch (error: any) {
             console.error('Stripe payment processing error:', error);
@@ -286,18 +286,34 @@ export class StripePaymentProcessor implements IPaymentProcessor {
         amount: number,
         currency: string,
         customerId?: string,
-        metadata?: any
+        metadata?: any,
+        options?: { setupFutureUsage?: boolean; paymentMethodId?: string }
     ): Promise<{ clientSecret: string; paymentIntentId: string }> {
         try {
-            const paymentIntent = await this.stripe.paymentIntents.create({
+            const createOptions: any = {
                 amount,
                 currency: currency.toLowerCase(),
                 customer: customerId,
-                automatic_payment_methods: {
-                    enabled: true
-                },
                 metadata
-            });
+            };
+
+            // If a saved payment method is provided, use it
+            if (options?.paymentMethodId) {
+                createOptions.payment_method = options.paymentMethodId;
+                createOptions.confirm = true; // Automatically confirm the payment
+                createOptions.off_session = false; // User is present
+                createOptions.return_url = process.env.FRONTEND_URL || 'http://localhost:3000';
+            } else {
+                createOptions.automatic_payment_methods = {
+                    enabled: true
+                };
+            }
+
+            if (options?.setupFutureUsage) {
+                createOptions.setup_future_usage = 'off_session';
+            }
+
+            const paymentIntent = await this.stripe.paymentIntents.create(createOptions);
 
             return {
                 clientSecret: paymentIntent.client_secret!,
@@ -305,7 +321,7 @@ export class StripePaymentProcessor implements IPaymentProcessor {
             };
         } catch (error: any) {
             console.error('Stripe payment intent creation error:', error);
-            throw new Error('Failed to create payment intent');
+            throw new Error(error.message || 'Failed to create payment intent');
         }
     }
 

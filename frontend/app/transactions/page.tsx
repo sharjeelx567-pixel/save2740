@@ -1,5 +1,6 @@
 "use client"
 
+
 import { useState } from "react"
 import { ProtectedPage } from "@/components/protected-page"
 import { Sidebar } from "@/components/sidebar"
@@ -13,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card"
 function TransactionsPageContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [exporting, setExporting] = useState(false)
   const itemsPerPage = 10
 
   const { data: transactions, loading, error, refetch } = useTransactions({
@@ -22,6 +24,39 @@ function TransactionsPageContent() {
 
   const hasNextPage = transactions && transactions.length === itemsPerPage
   const hasPrevPage = currentPage > 1
+
+  const handleExportCSV = async () => {
+    setExporting(true)
+    try {
+      const token = localStorage.getItem('token')
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+      
+      const response = await fetch(`${apiUrl}/api/wallet/transactions/export/csv`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Export failed')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `transactions-${Date.now()}.csv`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Export error:', error)
+      alert('Failed to export transactions')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -71,10 +106,18 @@ function TransactionsPageContent() {
           <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
 
             <div className="flex justify-end mb-4 md:mb-6">
-              <button className="bg-brand-green hover:bg-emerald-600 text-white px-3 md:px-4 py-2 md:py-2.5 rounded-lg md:rounded-xl flex items-center gap-2 text-xs md:text-sm font-semibold transition-colors shadow-sm shadow-emerald-200">
-                <Download className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Download CSV</span>
-                <span className="sm:hidden">Export</span>
+              <button 
+                onClick={handleExportCSV}
+                disabled={exporting}
+                className="bg-brand-green hover:bg-emerald-600 text-white px-3 md:px-4 py-2 md:py-2.5 rounded-lg md:rounded-xl flex items-center gap-2 text-xs md:text-sm font-semibold transition-colors shadow-sm shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {exporting ? (
+                  <Loader2 className="w-3 h-3 md:w-4 md:h-4 animate-spin" />
+                ) : (
+                  <Download className="w-3 h-3 md:w-4 md:h-4" />
+                )}
+                <span className="hidden sm:inline">{exporting ? 'Exporting...' : 'Download CSV'}</span>
+                <span className="sm:hidden">{exporting ? '...' : 'Export'}</span>
               </button>
             </div>
 
@@ -249,3 +292,4 @@ export default function TransactionsPage() {
     </ProtectedPage>
   )
 }
+

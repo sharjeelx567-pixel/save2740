@@ -1,4 +1,4 @@
-﻿import express, { Response } from 'express';
+import express, { Response } from 'express';
 // We'll use a simple placeholder model logic since Notification model might not exist or needs defining
 // If you have a Notification model, import it here. For now I'll check if file exists or simulate it.
 import mongoose, { Schema } from 'mongoose';
@@ -7,21 +7,8 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
 
-// Define schema inline if not found elsewhere (quick implementation pattern)
-/**
- * Quick inline Notification Schema/Model for backend api completeness
- */
-const NotificationSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  title: { type: String, required: true },
-  message: { type: String, required: true },
-  type: { type: String, enum: ['system', 'alert', 'info', 'success', 'warning'], default: 'info' },
-  read: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now }
-}, { timestamps: true });
+import Notification from '../models/Notification'; // Use default import as exported
 
-// Get or create model safely
-const Notification = mongoose.models.Notification || mongoose.model('Notification', NotificationSchema);
 
 
 // GET /api/notifications - Get all notifications
@@ -29,9 +16,11 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     await connectDB();
 
+    console.log(`[DEBUG] Fetching notifications for user: ${req.userId}`);
     const notifications = await Notification.find({ userId: req.userId })
       .sort({ createdAt: -1 })
       .limit(20);
+    console.log(`[DEBUG] Found ${notifications.length} notifications`);
 
     // Check unread count
     const unreadCount = await Notification.countDocuments({
@@ -42,6 +31,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     res.json({
       success: true,
       data: {
+        notifications,
         items: notifications,
         unreadCount
       }
@@ -60,24 +50,31 @@ router.put('/:id/read', authenticateToken, async (req: AuthRequest, res: Respons
   try {
     await connectDB();
 
-    // Update specific or all if id is 'all'
-    if (req.params.id === 'all') {
-      await Notification.updateMany(
-        { userId: req.userId, read: false },
-        { $set: { read: true } }
-      );
-      return res.json({ success: true, message: 'All marked as read' });
-    }
-
-    const notification = await Notification.findOneAndUpdate(
-      { _id: req.params.id, userId: req.userId },
-      { $set: { read: true } },
-      { new: true }
-    );
+    // Verify ownership before marking as read
+    const notification = await Notification.findOne({ 
+      _id: req.params.id, 
+      userId: req.userId 
+    });
 
     if (!notification) {
-      return res.status(404).json({ success: false, error: 'Notification not found' });
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Notification not found or unauthorized' 
+      });
     }
+
+    // Critical notifications cannot be marked as read without acknowledgment
+    if (notification.isCritical && !notification.acknowledgedAt) {
+      return res.status(400).json({
+        success: false,
+        error: 'Critical notifications must be acknowledged first',
+        code: 'REQUIRES_ACKNOWLEDGMENT'
+      });
+    }
+
+    notification.read = true;
+    notification.readAt = new Date();
+    await notification.save();
 
     res.json({
       success: true,
@@ -88,6 +85,130 @@ router.put('/:id/read', authenticateToken, async (req: AuthRequest, res: Respons
     res.status(500).json({
       success: false,
       error: 'Failed to update notification'
+    });
+  }
+});
+
+// POST /api/notifications/mark-all-read - Mark all non-critical as read
+router.post('/mark-all-read', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    await connectDB();
+
+    // Only mark non-critical notifications as read
+    const result = await Notification.updateMany(
+      { 
+        userId: req.userId, 
+        read: false,
+        isCritical: false // Don't auto-mark critical alerts
+      },
+      { 
+        $set: { 
+          read: true,
+          readAt: new Date()
+        } 
+      }
+    );
+
+    res.json({ 
+      success: true, 
+      message: `${result.modifiedCount} notifications marked as read`,
+      data: { modifiedCount: result.modifiedCount }
+    });
+  } catch (error) {
+    console.error('Mark all read error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to mark notifications as read'
+    });
+  }
+});
+
+// POST /api/notifications/:id/acknowledge - Acknowledge critical alert
+router.post('/:id/acknowledge', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    await connectDB();
+
+    const notification = await Notification.findOne({
+      _id: req.params.id,
+      userId: req.userId
+    });
+
+    if (!notification) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Notification not found' 
+      });
+    }
+
+    if (!notification.isCritical) {
+      return res.status(400).json({
+        success: false,
+        error: 'Only critical notifications require acknowledgment'
+      });
+    }
+
+    notification.acknowledgedAt = new Date();
+    notification.read = true;
+    notification.readAt = new Date();
+    await notification.save();
+
+    // Log critical alert acknowledgment for audit
+    console.log(`🔒 [SECURITY] Critical alert acknowledged: User ${req.userId} acknowledged notification ${notification._id} (${notification.type})`);
+
+    res.json({
+      success: true,
+      data: notification
+    });
+  } catch (error) {
+    console.error('Acknowledge error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to acknowledge notification'
+    });
+  }
+});
+
+// DELETE /api/notifications/:id - Delete/dismiss notification
+router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    await connectDB();
+
+    const notification = await Notification.findOne({
+      _id: req.params.id,
+      userId: req.userId
+    });
+
+    if (!notification) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Notification not found' 
+      });
+    }
+
+    // Critical notifications cannot be dismissed
+    if (notification.isCritical) {
+      return res.status(403).json({
+        success: false,
+        error: 'Critical notifications cannot be dismissed',
+        code: 'CRITICAL_CANNOT_DISMISS'
+      });
+    }
+
+    notification.dismissedAt = new Date();
+    await notification.save();
+
+    // Soft delete - mark as dismissed instead of hard delete
+    console.log(`🗑️  Notification dismissed: ${notification._id} by user ${req.userId}`);
+
+    res.json({
+      success: true,
+      message: 'Notification dismissed'
+    });
+  } catch (error) {
+    console.error('Delete notification error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete notification'
     });
   }
 });

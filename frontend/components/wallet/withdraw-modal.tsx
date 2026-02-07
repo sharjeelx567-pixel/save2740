@@ -107,3 +107,4 @@ export function WithdrawModal({ isOpen, onClose, onSuccess, availableBalance }: 
         </Dialog>
     )
 }
+

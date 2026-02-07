@@ -57,3 +57,4 @@ export function ChatMessageBubble({ sender, message, createdAt, read }: ChatMess
         </div>
     );
 }
+

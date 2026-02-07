@@ -1,5 +1,7 @@
 "use client"
 
+export const dynamic = "force-dynamic"
+
 import { useState, useEffect } from "react"
 import { ProtectedPage } from "@/components/protected-page"
 import { DashboardHeader } from "@/components/dashboard-header"
@@ -16,6 +18,7 @@ interface Pocket {
   multiplier: string
   saved: string
   progress: number
+  targetAmount: string // Added for edit
 }
 
 function SaverPocketsPageContent() {
@@ -23,6 +26,7 @@ function SaverPocketsPageContent() {
   const [pockets, setPockets] = useState<Pocket[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingPocketId, setEditingPocketId] = useState<string | null>(null) // New state
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -41,9 +45,20 @@ function SaverPocketsPageContent() {
             'Authorization': `Bearer ${token}`
           }
         })
+
         if (response.ok) {
           const data = await response.json()
-          setPockets(data.data.pockets || [])
+          // Map backend data to frontend interface
+          const mappedPockets = (data.data || []).map((p: any) => ({
+            id: p._id,
+            name: p.name,
+            dailyContribution: p.dailyAmount?.toString() || '0',
+            multiplier: p.multiplier?.toString() || '1',
+            saved: p.currentAmount?.toString() || '0',
+            progress: p.targetAmount ? Math.min(100, (p.currentAmount / p.targetAmount) * 100) : 0,
+            targetAmount: p.targetAmount?.toString() || '0'
+          }))
+          setPockets(mappedPockets)
         }
       } catch (error) {
         console.error('Error fetching pockets:', error)
@@ -55,19 +70,27 @@ function SaverPocketsPageContent() {
     fetchPockets()
   }, [])
 
+
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleCreatePocket = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/saver-pockets', {
-        method: 'POST',
+      const url = editingPocketId
+        ? `/api/saver-pockets/${editingPocketId}`
+        : '/api/saver-pockets';
+
+      const method = editingPocketId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -82,23 +105,39 @@ function SaverPocketsPageContent() {
 
       if (response.ok) {
         const data = await response.json()
-        const newPocket = data.data.pocket || data.data;
-        setPockets([...pockets, newPocket])
+        const savedPocket = data.data.pocket || data.data; // Handle possibly wrapped response
+
+        // Map it back to frontend format
+        const mappedPocket: Pocket = {
+          id: savedPocket._id,
+          name: savedPocket.name,
+          dailyContribution: savedPocket.dailyAmount?.toString() || '0',
+          multiplier: savedPocket.multiplier?.toString() || '1',
+          saved: savedPocket.currentAmount?.toString() || '0',
+          progress: savedPocket.targetAmount ? Math.min(100, (savedPocket.currentAmount / savedPocket.targetAmount) * 100) : 0,
+          targetAmount: savedPocket.targetAmount?.toString() || '0'
+        };
+
+        if (editingPocketId) {
+          setPockets(pockets.map(p => p.id === editingPocketId ? mappedPocket : p));
+          toast({ title: "Success!", description: "Bucket updated successfully" });
+        } else {
+          setPockets([mappedPocket, ...pockets]); // Add to top
+          toast({ title: "Success!", description: "Savings bucket created successfully" });
+        }
+
         setFormData({ name: '', dailyAmount: '', multiplier: '1', targetAmount: '' })
         setIsModalOpen(false)
-        toast({
-          title: "Success!",
-          description: "Savings pocket created successfully",
-        })
+        setEditingPocketId(null)
       } else {
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Failed to create pocket",
+          description: "Failed to save bucket",
         })
       }
     } catch (error) {
-      console.error('Error creating pocket:', error)
+      console.error('Error saving bucket:', error)
       toast({
         variant: "destructive",
         title: "Error",
@@ -107,6 +146,23 @@ function SaverPocketsPageContent() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleEditClick = (pocket: Pocket) => {
+    setEditingPocketId(pocket.id)
+    setFormData({
+      name: pocket.name,
+      dailyAmount: pocket.dailyContribution,
+      multiplier: pocket.multiplier,
+      targetAmount: pocket.targetAmount
+    })
+    setIsModalOpen(true)
+  }
+
+  const handleNewClick = () => {
+    setEditingPocketId(null);
+    setFormData({ name: '', dailyAmount: '', multiplier: '1', targetAmount: '' });
+    setIsModalOpen(true);
   }
 
   return (
@@ -130,7 +186,7 @@ function SaverPocketsPageContent() {
               <h1 className="lg:hidden text-2xl font-bold text-slate-900">Saver Pockets</h1>
 
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={handleNewClick}
                 className="flex items-center gap-2 bg-brand-green hover:bg-emerald-500 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg md:rounded-xl font-semibold transition-colors shadow-sm"
               >
                 <Plus className="w-4 md:w-5 h-4 md:h-5" />
@@ -161,7 +217,12 @@ function SaverPocketsPageContent() {
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs md:text-sm font-medium text-slate-600">Saved: </p>
-                      <button className="text-xs md:text-sm font-bold text-brand-green hover:underline">Edit Goal</button>
+                      <button
+                        onClick={() => handleEditClick(pocket)}
+                        className="text-xs md:text-sm font-bold text-brand-green hover:underline"
+                      >
+                        Edit Goal
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -174,9 +235,9 @@ function SaverPocketsPageContent() {
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Create New Pocket</DialogTitle>
+            <DialogTitle>{editingPocketId ? 'Edit Pocket' : 'Create New Pocket'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreatePocket} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Pocket Name
@@ -218,11 +279,11 @@ function SaverPocketsPageContent() {
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green"
               >
-                <option value="1">x1 (Normal)</option>
-                <option value="2">x2 (Double)</option>
-                <option value="3">x3 (Triple)</option>
-                <option value="4">x4 (Quadruple)</option>
-                <option value="5">x5 (5x)</option>
+                <option key="1" value="1">x1 (Normal)</option>
+                <option key="2" value="2">x2 (Double)</option>
+                <option key="3" value="3">x3 (Triple)</option>
+                <option key="4" value="4">x4 (Quadruple)</option>
+                <option key="5" value="5">x5 (5x)</option>
               </select>
             </div>
 
@@ -255,7 +316,7 @@ function SaverPocketsPageContent() {
                 disabled={isSubmitting}
                 className="flex-1 px-4 py-2 bg-brand-green text-white rounded-lg font-medium hover:bg-emerald-500 transition-colors disabled:opacity-50"
               >
-                {isSubmitting ? 'Creating...' : 'Create Pocket'}
+                {isSubmitting ? 'Saving...' : (editingPocketId ? 'Update Pocket' : 'Create Pocket')}
               </button>
             </div>
           </form>
@@ -272,3 +333,4 @@ export default function SaverPocketsPage() {
     </ProtectedPage>
   )
 }
+

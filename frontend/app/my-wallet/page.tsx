@@ -1,5 +1,6 @@
 "use client"
 
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ProtectedPage } from "@/components/protected-page"
@@ -189,7 +190,7 @@ function MyWalletPageContent() {
                 <Card className="bg-white border border-slate-100 rounded-2xl md:rounded-3xl p-6">
                   <div className="space-y-4">
                     {[...Array(3)].map((_, i) => (
-                      <div key={i} className="h-16 bg-slate-100 rounded-lg animate-pulse" />
+                      <div key={`skeleton-${i}`} className="h-16 bg-slate-100 rounded-lg animate-pulse" />
                     ))}
                   </div>
                 </Card>
@@ -197,9 +198,9 @@ function MyWalletPageContent() {
                 <Card className="bg-white border border-slate-100 rounded-2xl md:rounded-3xl overflow-hidden">
                   <CardContent className="p-0">
                     <div className="divide-y divide-slate-100">
-                      {transactions && transactions.map((tx: any) => (
+                      {transactions && transactions.map((tx: any, index: number) => (
                         <div
-                          key={tx.id}
+                          key={tx.id || `wallet-tx-${index}`}
                           className="p-3 sm:p-4 md:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 hover:bg-slate-50 transition-colors"
                         >
                           <div className="flex items-center gap-3 sm:gap-4 flex-1 w-full sm:w-auto">
@@ -257,5 +258,6 @@ export default function MyWalletPage() {
     </ProtectedPage>
   )
 }
+
 
 

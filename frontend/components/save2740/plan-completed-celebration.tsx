@@ -39,13 +39,13 @@ export function PlanCompletedCelebration({
       if (navigator.share) {
         await navigator.share({
           title: 'Save2740 Plan Completed!',
-          text: `I just completed my "${completionData.planName}" plan and saved $${(completionData.totalSaved / 100).toFixed(2)}! 🎉`,
+          text: `I just completed my "${completionData.planName}" plan and saved $${completionData.totalSaved.toFixed(2)}! 🎉`,
           url: window.location.href,
         });
       } else {
         // Copy to clipboard fallback
         await navigator.clipboard.writeText(
-          `I just completed my "${completionData.planName}" plan and saved $${(completionData.totalSaved / 100).toFixed(2)}! 🎉`
+          `I just completed my "${completionData.planName}" plan and saved $${completionData.totalSaved.toFixed(2)}! 🎉`
         );
         toast({
           title: 'Copied',
@@ -79,9 +79,9 @@ export function PlanCompletedCelebration({
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Saved</p>
               <p className="text-4xl font-bold text-green-600">
-                ${(completionData.totalSaved / 100).toFixed(2)}
+                ${completionData.totalSaved.toFixed(2)}
               </p>
-              <p className="text-sm text-gray-500 mt-1">of ${(completionData.targetAmount / 100).toFixed(2)} target</p>
+              <p className="text-sm text-gray-500 mt-1">of ${completionData.targetAmount.toFixed(2)} target</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 pt-4 border-t">
@@ -150,7 +150,7 @@ export function PlanCompletedCelebration({
                     <p className="font-semibold">{suggestion.name}</p>
                     <p className="text-sm text-gray-600">{suggestion.reason}</p>
                     <p className="text-sm font-bold text-brand-green mt-1">
-                      ${(suggestion.suggestedAmount / 100).toFixed(2)} target
+                      ${suggestion.suggestedAmount.toFixed(2)} target
                     </p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-gray-400 mt-1" />
@@ -194,3 +194,4 @@ export function PlanCompletedCelebration({
     </div>
   );
 }
+

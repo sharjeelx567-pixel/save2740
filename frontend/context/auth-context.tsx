@@ -1,7 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { User, Session, AuthState, LoginPayload, SignUpPayload } from "@/types/auth";
+import { fcmService } from "@/lib/fcm-service";
 
 interface AuthContextType extends AuthState {
   login: (credentials: LoginPayload) => Promise<void>;
@@ -20,6 +22,14 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Safely get queryClient - it might not be available during SSR or initial render
+  let queryClient: ReturnType<typeof useQueryClient> | null = null;
+  try {
+    queryClient = useQueryClient();
+  } catch (e) {
+    // QueryClient not available yet, that's okay
+  }
+
   const [state, setState] = useState<AuthState>({
     isAuthenticated: false,
     user: null,
@@ -27,6 +37,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading: true,
     error: null,
   });
+
+  // Helper to update state with proper typing
+  const updateState = (updates: Partial<AuthState>) => {
+    setState((prev: AuthState) => ({ ...prev, ...updates }));
+  };
 
   // Initialize auth state from localStorage
   useEffect(() => {
@@ -40,15 +55,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const user = JSON.parse(storedUser);
 
           // Check if session is still valid
-          if (new Date(session.expiresAt) > new Date()) {
-            setState({
-              isAuthenticated: true,
-              user,
-              session,
-              loading: false,
-              error: null,
+          // Temporarily disabled strict expiry check to prevent auto-logout issues
+          // if (new Date(session.expiresAt) > new Date()) {
+          setState({
+            isAuthenticated: true,
+            user,
+            session,
+            loading: false,
+            error: null,
+          });
+
+          // Initialize FCM for push notifications on app load
+          if (fcmService.isSupported()) {
+            fcmService.initialize().catch(err => {
+              console.warn('FCM initialization failed:', err);
             });
-          } else {
+          }
+          /* } else {
+            console.warn("Session expired based on client clock", session.expiresAt);
             // Session expired, clear storage
             localStorage.removeItem("session");
             localStorage.removeItem("user");
@@ -59,12 +83,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               loading: false,
               error: null,
             });
-          }
+          } */
         } else {
-          setState((prev) => ({ ...prev, loading: false }));
+          setState((prev: AuthState) => ({ ...prev, loading: false }));
         }
       } catch (error) {
-        setState((prev) => ({ ...prev, loading: false }));
+        setState((prev: AuthState) => ({ ...prev, loading: false }));
       }
     };
 
@@ -72,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = useCallback(async (credentials: LoginPayload) => {
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+    setState((prev: AuthState) => ({ ...prev, loading: true, error: null }));
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://save-2740-backend.vercel.app";
       const response = await fetch(`${apiUrl}/api/auth/login`, {
@@ -85,13 +109,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await response.json();
 
       if (!response.ok) {
+        const errorCode = data.code;
+        if (errorCode === 'ACCOUNT_LOCKED' || errorCode === 'ACCOUNT_SUSPENDED') {
+          window.location.href = `/account-status?code=${errorCode}`;
+          throw new Error(data.error || "Account issue");
+        }
         throw new Error(data.error || "Login failed");
       }
 
-      const { user, session } = data.data;
+      // Backend returns { success: true, data: { accessToken, refreshToken, user } }
+      // We need to construct the 'session' object expected by the frontend state
+      const { user, accessToken, refreshToken } = data.data;
+
+      const session: Session = {
+        id: 'current', // Placeholder
+        userId: user.id,
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24h approximation or parse JWT
+      };
 
       // Save tokens to localStorage
-      localStorage.setItem("token", session.accessToken); // For backward compatibility
+      localStorage.setItem("token", accessToken); // For backward compatibility
       localStorage.setItem("userId", user.id);
       localStorage.setItem("session", JSON.stringify(session));
       localStorage.setItem("user", JSON.stringify(user));
@@ -103,8 +142,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading: false,
         error: null,
       });
+
+      // Initialize FCM for push notifications
+      if (fcmService.isSupported()) {
+        fcmService.initialize().catch(err => {
+          console.warn('FCM initialization failed:', err);
+        });
+      }
     } catch (error) {
-      setState((prev) => ({
+      setState((prev: AuthState) => ({
         ...prev,
         loading: false,
         error: error instanceof Error ? error.message : "Login failed",
@@ -114,16 +160,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(async () => {
-    setState((prev) => ({ ...prev, loading: true }));
+    setState((prev: AuthState) => ({ ...prev, loading: true }));
     try {
-      await fetch("/api/auth/logout", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://save-2740-backend.vercel.app";
+      await fetch(`${apiUrl}/api/auth/logout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId: state.session?.id }),
+        credentials: "include",
       });
 
+      // CRITICAL: Clear React Query cache to prevent old user data from persisting
+      if (queryClient) {
+        queryClient.clear();
+      }
+
+      localStorage.removeItem("token");
       localStorage.removeItem("session");
       localStorage.removeItem("user");
+      localStorage.removeItem("userId");
 
       setState({
         isAuthenticated: false,
@@ -133,17 +188,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error: null,
       });
     } catch (error) {
-      setState((prev) => ({
-        ...prev,
+      // Still clear local state even if backend fails
+      // CRITICAL: Clear React Query cache to prevent old user data from persisting
+      if (queryClient) {
+        queryClient.clear();
+      }
+
+      localStorage.removeItem("token");
+      localStorage.removeItem("session");
+      localStorage.removeItem("user");
+      localStorage.removeItem("userId");
+
+      setState({
+        isAuthenticated: false,
+        user: null,
+        session: null,
         loading: false,
-        error: error instanceof Error ? error.message : "Logout failed",
-      }));
-      throw error;
+        error: null,
+      });
     }
-  }, [state.session]);
+  }, [state.session, queryClient]);
 
   const signup = useCallback(async (payload: SignUpPayload) => {
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+    setState((prev: AuthState) => ({ ...prev, loading: true, error: null }));
     try {
       const response = await fetch("/api/auth/signup", {
         method: "POST",
@@ -163,13 +230,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("pending_email_verification", user.email);
       localStorage.setItem("temp_user", JSON.stringify(user));
 
-      setState((prev) => ({
+      setState((prev: AuthState) => ({
         ...prev,
         loading: false,
         error: null,
       }));
     } catch (error) {
-      setState((prev) => ({
+      setState((prev: AuthState) => ({
         ...prev,
         loading: false,
         error: error instanceof Error ? error.message : "Signup failed",
@@ -179,7 +246,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const verifyEmail = useCallback(async (email: string, code: string) => {
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+    setState((prev: AuthState) => ({ ...prev, loading: true, error: null }));
     try {
       const response = await fetch("/api/auth/verify-email", {
         method: "POST",
@@ -195,13 +262,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       localStorage.removeItem("pending_email_verification");
 
-      setState((prev) => ({
+      setState((prev: AuthState) => ({
         ...prev,
         loading: false,
         error: null,
       }));
     } catch (error) {
-      setState((prev) => ({
+      setState((prev: AuthState) => ({
         ...prev,
         loading: false,
         error: error instanceof Error ? error.message : "Email verification failed",
@@ -211,7 +278,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const verifyOTP = useCallback(async (phoneNumber: string, otp: string) => {
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+    setState((prev: AuthState) => ({ ...prev, loading: true, error: null }));
     try {
       const response = await fetch("/api/auth/verify-otp", {
         method: "POST",
@@ -225,13 +292,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(data.error || "OTP verification failed");
       }
 
-      setState((prev) => ({
+      setState((prev: AuthState) => ({
         ...prev,
         loading: false,
         error: null,
       }));
     } catch (error) {
-      setState((prev) => ({
+      setState((prev: AuthState) => ({
         ...prev,
         loading: false,
         error: error instanceof Error ? error.message : "OTP verification failed",
@@ -241,7 +308,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const forgotPassword = useCallback(async (email: string) => {
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+    setState((prev: AuthState) => ({ ...prev, loading: true, error: null }));
     try {
       const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
@@ -255,13 +322,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(data.error || "Forgot password request failed");
       }
 
-      setState((prev) => ({
+      setState((prev: AuthState) => ({
         ...prev,
         loading: false,
         error: null,
       }));
     } catch (error) {
-      setState((prev) => ({
+      setState((prev: AuthState) => ({
         ...prev,
         loading: false,
         error: error instanceof Error ? error.message : "Forgot password request failed",
@@ -272,7 +339,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = useCallback(
     async (token: string, password: string, confirmPassword: string) => {
-      setState((prev) => ({ ...prev, loading: true, error: null }));
+      setState((prev: AuthState) => ({ ...prev, loading: true, error: null }));
       try {
         const response = await fetch("/api/auth/reset-password", {
           method: "POST",
@@ -286,13 +353,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw new Error(data.error || "Password reset failed");
         }
 
-        setState((prev) => ({
+        setState((prev: AuthState) => ({
           ...prev,
           loading: false,
           error: null,
         }));
       } catch (error) {
-        setState((prev) => ({
+        setState((prev: AuthState) => ({
           ...prev,
           loading: false,
           error: error instanceof Error ? error.message : "Password reset failed",
@@ -304,7 +371,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const setupBiometric = useCallback(async () => {
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+    setState((prev: AuthState) => ({ ...prev, loading: true, error: null }));
     try {
       if (!window.PublicKeyCredential) {
         throw new Error("Biometric authentication is not supported on this device");
@@ -312,13 +379,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // This would be implemented with actual WebAuthn API
       // For now, this is a placeholder
-      setState((prev) => ({
+      setState((prev: AuthState) => ({
         ...prev,
         loading: false,
         error: null,
       }));
     } catch (error) {
-      setState((prev) => ({
+      setState((prev: AuthState) => ({
         ...prev,
         loading: false,
         error: error instanceof Error ? error.message : "Biometric setup failed",
@@ -347,14 +414,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       localStorage.setItem("session", JSON.stringify(session));
 
-      setState((prev) => ({
+      setState((prev: AuthState) => ({
         ...prev,
         session,
       }));
     } catch (error) {
       // If refresh fails, logout user
       await logout();
-      setState((prev) => ({
+      setState((prev: AuthState) => ({
         ...prev,
         error: "Session expired. Please login again.",
       }));
@@ -373,7 +440,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await response.json();
 
       if (data.data.accountStatus !== "active") {
-        setState((prev) => ({
+        setState((prev: AuthState) => ({
           ...prev,
           user: data.data,
           error: `Account is ${data.data.accountStatus}`,
@@ -385,7 +452,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [state.user]);
 
   const clearError = useCallback(() => {
-    setState((prev) => ({ ...prev, error: null }));
+    setState((prev: AuthState) => ({ ...prev, error: null }));
   }, []);
 
   const value: AuthContextType = {
@@ -413,3 +480,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

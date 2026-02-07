@@ -134,10 +134,10 @@ class JobQueue {
      */
     private async processRedisQueue(type: JobType, redisClient: any): Promise<void> {
         const queueKey = `queue:${type}`;
-        
+
         try {
             const jobData = await redisClient.lPop(queueKey);
-            
+
             if (!jobData) return; // Queue is empty
 
             const job: Job = JSON.parse(jobData);
@@ -163,6 +163,8 @@ class JobQueue {
 
         for (let i = this.inMemoryQueue.length - 1; i >= 0; i--) {
             const job = this.inMemoryQueue[i];
+
+            if (!job) continue;
 
             // Check if job is scheduled for future
             if (job.scheduledFor && job.scheduledFor > now) {
@@ -190,9 +192,9 @@ class JobQueue {
 
         try {
             console.log(`⚙️  Processing job ${job.id} (${job.type}), attempt ${job.attempts + 1}/${job.maxAttempts}`);
-            
+
             await handler(job.data);
-            
+
             console.log(`✅ Job ${job.id} completed successfully`);
         } catch (error: any) {
             job.attempts++;
@@ -203,7 +205,7 @@ class JobQueue {
             // Retry if max attempts not reached
             if (job.attempts < job.maxAttempts) {
                 console.log(`🔄 Retrying job ${job.id} in 30 seconds...`);
-                
+
                 // Re-add to queue with delay
                 await this.add(job.type, job.data, {
                     delay: 30000, // 30 seconds
@@ -262,6 +264,7 @@ export async function addNotificationJob(data: {
     title: string;
     message: string;
     type?: string;
+    data?: any;
 }): Promise<string> {
     return jobQueue.add('notification', data);
 }

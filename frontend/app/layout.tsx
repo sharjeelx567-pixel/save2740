@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster"
 import { SupportChatProvider } from '@/context/support-chat-context'
 import { SupportChatButton } from '@/components/support-chat-button'
 import { SupportChatWidget } from '@/components/support-chat-widget'
+import { AuthProvider } from '@/context/auth-context'
+import { ServiceWorkerRegister } from '@/components/service-worker-register'
 
 // Using system fonts as fallback for production builds
 const inter = {
@@ -34,24 +36,32 @@ export const metadata: Metadata = {
   },
 }
 
+import { QueryProvider } from '@/components/providers/query-provider'
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="font-sans antialiased">
-        <SupportChatProvider>
-          {children}
-          <Toaster />
-          <Analytics />
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <body className="font-sans antialiased" suppressHydrationWarning>
+        <ServiceWorkerRegister />
+        <AuthProvider>
+          <QueryProvider>
+            <SupportChatProvider>
+              {children}
+              <Toaster />
+              <Analytics />
 
-          {/* Support Chat Components */}
-          <SupportChatButton />
-          <SupportChatWidget />
-        </SupportChatProvider>
+              {/* Support Chat Components */}
+              <SupportChatButton />
+              <SupportChatWidget />
+            </SupportChatProvider>
+          </QueryProvider>
+        </AuthProvider>
       </body>
     </html>
   )
 }
+

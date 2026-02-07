@@ -7,7 +7,8 @@
         "dev": "nodemon src/server.ts",
         "build": "tsc",
         "start": "node dist/server.js",
-        "lint": "eslint src --ext .ts"
+        "lint": "eslint src --ext .ts",
+        "create-admin": "ts-node scripts/create-admin.ts"
     },
     "keywords": [
         "savings",
@@ -17,23 +18,28 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
+        "@types/multer": "^2.0.0",
+        "@types/node-cron": "^3.0.11",
         "bcryptjs": "^3.0.3",
         "compression": "^1.7.4",
         "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",
-        "dotenv": "^17.2.3",
         "express": "^5.2.1",
         "express-mongo-sanitize": "^2.2.0",
         "express-rate-limit": "^7.4.1",
+        "firebase-admin": "^13.6.0",
         "helmet": "^8.0.0",
         "hpp": "^0.2.3",
         "jsonwebtoken": "^9.0.3",
         "mongodb": "^6.0.0",
         "mongoose": "^8.0.0",
         "morgan": "^1.10.0",
+        "multer": "^2.0.2",
+        "node-cron": "^4.2.1",
         "nodemailer": "^7.0.12",
         "redis": "^4.7.1",
-        "stripe": "^20.1.0",
+        "stripe": "^20.3.0",
+        "uuid": "^13.0.0",
         "wonka": "^6.3.5",
         "zod": "3.25.76"
     },
@@ -48,6 +54,7 @@
         "@types/morgan": "^1.9.9",
         "@types/node": "^22",
         "@types/nodemailer": "^7.0.4",
+        "dotenv": "^17.2.3",
         "nodemon": "^3.1.11",
         "ts-node": "^10.9.2",
         "typescript": "^5"

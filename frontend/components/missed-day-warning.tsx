@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Flame, X, Calendar, Clock, TrendingUp } from "lucide-react"
 import { useWallet } from "@/hooks/use-wallet"
 import { AddMoneyModal } from "@/components/wallet/add-money-modal"
+import { FINANCIAL } from "@/lib/constants"
 
 /**
  * MissedDayWarning Component
@@ -42,7 +43,7 @@ export function MissedDayWarning() {
   if (!isVisible) return null
 
   const hoursLeft = 24 - new Date().getHours()
-  const dailyAmount = data?.dailySavingAmount || 27.4
+  const dailyAmount = data?.dailySavingAmount || FINANCIAL.DAILY_SAVINGS_AMOUNT
 
   const handleSuccess = () => {
     refetch()
@@ -166,3 +167,4 @@ export function MissedDayWarning() {
     </>
   )
 }
+

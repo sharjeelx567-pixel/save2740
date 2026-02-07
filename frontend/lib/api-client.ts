@@ -42,6 +42,8 @@ class ApiClient {
   private getHeaders(): HeadersInit {
     const headers: HeadersInit = {
       "Content-Type": "application/json",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Pragma": "no-cache",
     };
 
     const token = this.getAuthToken();
@@ -53,18 +55,17 @@ class ApiClient {
   }
 
   /**
-   * Create abort controller with timeout
-   */
-  private createAbortSignal(): AbortSignal {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-    return controller.signal;
-  }
-
-  /**
    * Parse error response from API
    */
   private parseError(error: unknown): ApiErrorResponse {
+    // Handle abort/timeout errors
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return {
+        error: 'Request was cancelled or timed out.',
+        code: 'ABORT_ERROR',
+      };
+    }
+
     if (error instanceof TypeError) {
       if (error.message.includes("fetch")) {
         return {
@@ -95,20 +96,46 @@ class ApiClient {
     options?: RequestInit
   ): Promise<ApiResponse<T>> {
     try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), this.timeout);
+
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         method: "GET",
         headers: this.getHeaders(),
-        signal: this.createAbortSignal(),
         credentials: 'include', // Include cookies in request
+        cache: 'no-store', // CRITICAL: Prevent 304 responses
+        signal: options?.signal || controller.signal,
         ...options,
       });
+      clearTimeout(id);
 
       if (!response.ok) {
         const errorData = await response.json();
+        const errorCode = errorData.code || 'UNKNOWN_ERROR';
+
+        // Handle specific error codes
+        if (errorCode === 'SESSION_EXPIRED' || response.status === 401) {
+          // Clear auth data and redirect to login
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem(STORAGE.TOKEN);
+            localStorage.removeItem('session');
+            localStorage.removeItem('user');
+            window.location.href = '/session-expired';
+          }
+        }
+
+        if (errorCode === 'ACCOUNT_LOCKED' || errorCode === 'ACCOUNT_SUSPENDED') {
+          // Redirect to account status page
+          if (typeof window !== 'undefined') {
+            window.location.href = `/account-status?code=${errorCode}`;
+          }
+        }
+
         return {
           success: false,
           error: {
             error: errorData.error || ERROR_MESSAGES.SERVER_ERROR,
+            code: errorCode,
             status: response.status,
           },
         };
@@ -117,6 +144,17 @@ class ApiClient {
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
+      // Silently handle AbortError (expected when components unmount or navigate away)
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return {
+          success: false,
+          error: {
+            error: 'Request cancelled',
+            code: 'ABORT_ERROR',
+          },
+        };
+      }
+
       console.error(`GET ${endpoint} failed:`, error);
       return {
         success: false,
@@ -134,21 +172,47 @@ class ApiClient {
     options?: RequestInit
   ): Promise<ApiResponse<T>> {
     try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), this.timeout);
+
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         method: "POST",
         headers: this.getHeaders(),
         body: body ? JSON.stringify(body) : undefined,
-        signal: this.createAbortSignal(),
         credentials: 'include', // Include cookies in request
+        cache: 'no-store', // CRITICAL: Prevent 304 responses
+        signal: options?.signal || controller.signal,
         ...options,
       });
+      clearTimeout(id);
 
       if (!response.ok) {
         const errorData = await response.json();
+        const errorCode = errorData.code || 'UNKNOWN_ERROR';
+
+        // Handle specific error codes
+        if (errorCode === 'SESSION_EXPIRED' || response.status === 401) {
+          // Clear auth data and redirect to login
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem(STORAGE.TOKEN);
+            localStorage.removeItem('session');
+            localStorage.removeItem('user');
+            window.location.href = '/session-expired';
+          }
+        }
+
+        if (errorCode === 'ACCOUNT_LOCKED' || errorCode === 'ACCOUNT_SUSPENDED') {
+          // Redirect to account status page
+          if (typeof window !== 'undefined') {
+            window.location.href = `/account-status?code=${errorCode}`;
+          }
+        }
+
         return {
           success: false,
           error: {
             error: errorData.error || ERROR_MESSAGES.SERVER_ERROR,
+            code: errorCode,
             status: response.status,
           },
         };
@@ -157,7 +221,108 @@ class ApiClient {
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
+      // Silently handle AbortError (expected when components unmount or navigate away)
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return {
+          success: false,
+          error: {
+            error: 'Request cancelled',
+            code: 'ABORT_ERROR',
+          },
+        };
+      }
+
       console.error(`POST ${endpoint} failed:`, error);
+      return {
+        success: false,
+        error: this.parseError(error),
+      };
+    }
+  }
+
+  /**
+   * Generic PUT request
+   */
+  async put<T, D = unknown>(
+    endpoint: string,
+    body?: D,
+    options?: RequestInit
+  ): Promise<ApiResponse<T>> {
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), this.timeout);
+
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: "PUT",
+        headers: this.getHeaders(),
+        body: body ? JSON.stringify(body) : undefined,
+        credentials: 'include',
+        cache: 'no-store',
+        signal: options?.signal || controller.signal,
+        ...options,
+      });
+      clearTimeout(id);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return {
+          success: false,
+          error: {
+            error: errorData.error || ERROR_MESSAGES.SERVER_ERROR,
+            code: errorData.code || 'UNKNOWN_ERROR',
+            status: response.status,
+          },
+        };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error(`PUT ${endpoint} failed:`, error);
+      return {
+        success: false,
+        error: this.parseError(error),
+      };
+    }
+  }
+
+  /**
+   * Generic DELETE request
+   */
+  async delete<T>(
+    endpoint: string,
+    options?: RequestInit
+  ): Promise<ApiResponse<T>> {
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), this.timeout);
+
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: "DELETE",
+        headers: this.getHeaders(),
+        credentials: 'include',
+        cache: 'no-store',
+        signal: options?.signal || controller.signal,
+        ...options,
+      });
+      clearTimeout(id);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return {
+          success: false,
+          error: {
+            error: errorData.error || ERROR_MESSAGES.SERVER_ERROR,
+            code: errorData.code || 'UNKNOWN_ERROR',
+            status: response.status,
+          },
+        };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error(`DELETE ${endpoint} failed:`, error);
       return {
         success: false,
         error: this.parseError(error),
@@ -168,3 +333,4 @@ class ApiClient {
 
 // Export singleton instance
 export const apiClient = new ApiClient();
+

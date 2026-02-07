@@ -399,3 +399,4 @@ export interface ChargebacksListResponse {
   data?: ChargebackNotice[];
   error?: string;
 }
+

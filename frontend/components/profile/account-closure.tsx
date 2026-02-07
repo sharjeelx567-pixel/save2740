@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { AlertTriangle, Trash2, Lock, Loader2, XCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useRouter } from "next/navigation";
+import { API } from "@/lib/constants";
 
 export function AccountClosure() {
     const router = useRouter(); const [step, setStep] = useState(1);
@@ -31,11 +32,13 @@ export function AccountClosure() {
         setError("");
 
         try {
-            const response = await fetch("/api/user/delete-account", {
+            const response = await fetch(`${API.BASE_URL}/api/account`, {
                 method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({ password, confirmation }),
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${localStorage.getItem('token') || ''}`
+                },
+                body: JSON.stringify({ password, confirm: confirmation === "DELETE" }),
             });
 
             if (!response.ok) {
@@ -205,3 +208,4 @@ export function AccountClosure() {
         </div>
     );
 }
+

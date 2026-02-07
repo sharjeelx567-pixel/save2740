@@ -91,9 +91,9 @@ export function ProfileOverview() {
                             <p className="text-sm text-gray-500 font-medium">Email Address</p>
                             <p className="text-base text-gray-900 font-semibold">{user?.email || "user@example.com"}</p>
                         </div>
-                        {/* {user?.emailVerified && (
+                        {user?.emailVerified && (
                             <Badge className="bg-green-100 text-green-700 border-green-200">Verified</Badge>
-                        )} */}
+                        )}
                     </div>
 
                     <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
@@ -102,7 +102,7 @@ export function ProfileOverview() {
                         </div>
                         <div className="flex-1">
                             <p className="text-sm text-gray-500 font-medium">Phone Number</p>
-                            <p className="text-base text-gray-900 font-semibold">{user?.phone || "Not provided"}</p>
+                            <p className="text-base text-gray-900 font-semibold">{user?.phoneNumber || user?.phone || "Not provided"}</p>
                         </div>
                         {user?.phoneVerified && (
                             <Badge className="bg-green-100 text-green-700 border-green-200">Verified</Badge>
@@ -138,3 +138,4 @@ export function ProfileOverview() {
         </div>
     );
 }
+

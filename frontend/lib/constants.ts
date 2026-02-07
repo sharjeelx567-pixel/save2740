@@ -14,12 +14,18 @@ export const FINANCIAL = {
 
 // API Configuration
 export const API = {
-  BASE_URL: process.env.NODE_ENV === "development"
-    ? "http://localhost:5000"
-    : (process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "https://save-2740-backend.vercel.app"),
+  BASE_URL: process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:5000",
   ENDPOINTS: {
     WALLET: "/api/wallet",
+    WALLET_DEPOSIT: "/api/wallet/deposit",
+    WALLET_WITHDRAW: "/api/wallet/withdraw",
+    WALLET_LIMITS: "/api/wallet/limits",
+    WALLET_ESCROW: "/api/wallet/escrow",
+    WALLET_FREEZE: "/api/wallet/freeze",
+    WALLET_UNFREEZE: "/api/wallet/unfreeze",
     TRANSACTIONS: "/api/wallet/transactions",
+    TRANSACTIONS_PENDING: "/api/wallet/transactions/pending",
+    TRANSACTIONS_FAILED: "/api/wallet/transactions/failed",
     AUTH_LOGOUT: "/api/auth/logout",
     PHONE_VERIFICATION: "/api/auth/send-phone-otp",
     BIOMETRIC_REGISTER: "/api/auth/biometric/register",
@@ -31,7 +37,7 @@ export const API = {
     DASHBOARD_STREAK: "/api/dashboard/streak",
     DASHBOARD_ACHIEVEMENTS: "/api/dashboard/achievements",
   },
-  TIMEOUT: 10000, // 10 seconds
+  TIMEOUT: 30000, // 30 seconds
 } as const;
 
 // UI Constants
@@ -66,3 +72,4 @@ export const DATE_FORMATS = {
     day: "2-digit" as const,
   },
 } as const;
+

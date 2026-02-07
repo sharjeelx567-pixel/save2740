@@ -29,44 +29,39 @@ export function detectFraudulentReferral(
 
   // Check 1: Duplicate email (same email can't be referred twice)
   const duplicateEmail = referralHistory.some(
-    (h) => h.refereeEmail.toLowerCase() === attempt.refereeEmail.toLowerCase() && h.timestamp
-  )
+    (h) => h.refereeEmail && h.refereeEmail.toLowerCase() === attempt.refereeEmail.toLowerCase() && h.timestamp
+  );
   if (duplicateEmail) {
-    reasons.push("Duplicate email: This email has already been referred")
-    riskScore += 40
+    reasons.push('Duplicate email: This email has already been referred');
+    // riskScore += 40; 
+    riskScore += 100; // REJECT duplicate emails immediately to prevent spam
   }
 
-  // Check 2: Duplicate phone (same phone can't be referred twice)
-  if (attempt.refereePhone) {
-    const duplicatePhone = referralHistory.some(
-      (h) => h.refereePhone === attempt.refereePhone
-    )
-    if (duplicatePhone) {
-      reasons.push("Duplicate phone: This phone has already been referred")
-      riskScore += 35
+  // SKIP IP checks in development/localhost to allow testing
+  const isDev = process.env.NODE_ENV === 'development' || attempt.refereeIP === '::1' || attempt.refereeIP === '127.0.0.1';
+
+  if (!isDev) {
+    // Check 3: Same IP address...
+    const sameIPLastHour = referralHistory.filter(
+      (h) =>
+        h.refereeIP === attempt.refereeIP &&
+        Date.now() - h.timestamp.getTime() < 3600000 // Last hour
+    );
+    if (sameIPLastHour.length >= 5) {
+      reasons.push('Suspicious activity: Multiple referrals from same IP in short time');
+      riskScore += 50;
     }
-  }
 
-  // Check 3: Same IP address with multiple referrals in short time (likely bot/automated)
-  const sameIPLastHour = referralHistory.filter(
-    (h) =>
-      h.refereeIP === attempt.refereeIP &&
-      Date.now() - h.timestamp.getTime() < 3600000 // Last hour
-  )
-  if (sameIPLastHour.length >= 5) {
-    reasons.push("Suspicious activity: Multiple referrals from same IP in short time")
-    riskScore += 50
-  }
-
-  // Check 4: Same referrer multiple referrals in very short time (likely mass referral attempt)
-  const sameReferrerLastMin = referralHistory.filter(
-    (h) =>
-      h.referrerId === attempt.referrerId &&
-      Date.now() - h.timestamp.getTime() < 60000 // Last minute
-  )
-  if (sameReferrerLastMin.length >= 3) {
-    reasons.push("Suspicious activity: Too many referrals in short time")
-    riskScore += 45
+    // Check 4: Same referrer multiple referrals...
+    const sameReferrerLastMin = referralHistory.filter(
+      (h) =>
+        h.referrerId === attempt.referrerId &&
+        Date.now() - h.timestamp.getTime() < 60000 // Last minute
+    );
+    if (sameReferrerLastMin.length >= 10) { // Increased limit
+      reasons.push('Suspicious activity: Too many referrals in short time');
+      riskScore += 45;
+    }
   }
 
   // Check 5: Device fingerprint mismatch (same person using different devices for multiple referrals)

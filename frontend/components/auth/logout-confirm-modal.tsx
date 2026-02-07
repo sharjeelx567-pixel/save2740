@@ -52,3 +52,4 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = ({
     </div>
   );
 };
+

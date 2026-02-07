@@ -2,16 +2,19 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ITransaction extends Document {
     userId: mongoose.Types.ObjectId;
-    type: 'deposit' | 'withdraw' | 'save_daily' | 'goal_fund' | 'referral_bonus' | 'group_contribution';
+    type: 'deposit' | 'withdraw' | 'withdrawal' | 'save_daily' | 'goal_fund' | 'referral_bonus' | 'group_contribution' | 'transfer' | 'refund' | 'fee';
     amount: number;
-    status: 'pending' | 'completed' | 'failed';
+    status: 'pending' | 'completed' | 'failed' | 'cancelled';
     description: string;
     paymentMethodId?: string; // ID of the card/bank used if applicable
     referenceId?: string; // External ref (Stripe ID)
-    details?: any; // Extra metadata
+    externalTransactionId?: string; // Stripe Payment Intent ID or Transfer ID
+    failureReason?: string; // Reason for failure if status is failed
+    metadata?: any; // Extra metadata
     transactionId: string;
     createdAt: Date;
     updatedAt: Date;
+    completedAt?: Date;
 }
 
 const TransactionSchema = new Schema<ITransaction>({
@@ -25,19 +28,22 @@ const TransactionSchema = new Schema<ITransaction>({
     type: {
         type: String,
         required: true,
-        enum: ['deposit', 'withdraw', 'save_daily', 'goal_fund', 'referral_bonus', 'group_contribution']
+        enum: ['deposit', 'withdraw', 'withdrawal', 'save_daily', 'goal_fund', 'referral_bonus', 'group_contribution', 'transfer', 'refund', 'fee']
     },
     amount: { type: Number, required: true },
     status: {
         type: String,
         required: true,
-        enum: ['pending', 'completed', 'failed'],
+        enum: ['pending', 'completed', 'failed', 'cancelled'],
         default: 'completed'
     },
     description: { type: String, default: '' },
     paymentMethodId: { type: String },
     referenceId: { type: String },
-    details: { type: Schema.Types.Mixed },
+    externalTransactionId: { type: String }, // Stripe Payment Intent ID or Transfer ID
+    failureReason: { type: String },
+    metadata: { type: Schema.Types.Mixed },
+    completedAt: { type: Date },
 }, {
     timestamps: true
 });

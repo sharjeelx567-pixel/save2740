@@ -201,3 +201,4 @@ export function getLedgerEntries(
     return entryDate >= startDate && entryDate <= endDate
   })
 }
+

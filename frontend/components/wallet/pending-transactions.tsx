@@ -24,6 +24,7 @@ import {
   RefreshCw,
   XCircle,
 } from 'lucide-react'
+import { WalletService } from '@/lib/wallet-service'
 
 interface PendingTransaction {
   id: string
@@ -50,18 +51,14 @@ export function PendingTransactions() {
       setError(null)
 
       try {
-        const response = await fetch('/api/wallet/transactions?status=pending', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
-          },
-        })
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch pending transactions')
+        const response = await WalletService.getPendingTransactions()
+        if (response.success && response.data) {
+          const data = response.data.data || response.data
+          setTransactions(data.transactions || [])
+        } else {
+          const errorMsg = typeof response.error === 'string' ? response.error : (response.error?.error || 'Failed to fetch pending transactions');
+          throw new Error(errorMsg);
         }
-
-        const result = await response.json()
-        setTransactions(result.transactions || [])
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to load transactions'
         setError(message)
@@ -114,15 +111,10 @@ export function PendingTransactions() {
   const handleRefresh = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/wallet/transactions?status=pending', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
-        },
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setTransactions(result.transactions || [])
+      const response = await WalletService.getPendingTransactions()
+      if (response.success && response.data) {
+        const data = response.data.data || response.data
+        setTransactions(data.transactions || [])
         toast({
           title: 'Success',
           description: 'Transactions updated',
@@ -262,3 +254,4 @@ export function PendingTransactions() {
     </Card>
   )
 }
+

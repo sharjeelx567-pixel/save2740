@@ -11,6 +11,14 @@ export interface IWallet extends Document {
   lastDailySavingDate?: Date;
   currentStreak: number;
   dailySavingAmount: number;
+  // Escrow and pending balances
+  escrowBalance: number; // Funds held in escrow
+  pendingWithdrawals: number; // Amount locked for pending withdrawals
+  // Wallet status
+  status: 'active' | 'frozen' | 'suspended';
+  freezeReason?: string;
+  freezeDate?: Date;
+  frozenBy?: string; // Admin ID who froze the wallet
   // External wallet integration
   externalWalletId?: string; // ID from external wallet system
   externalWalletBalance?: number; // Synced balance from external system
@@ -21,6 +29,8 @@ export interface IWallet extends Document {
   autoTopUpEnabled: boolean;
   autoTopUpThreshold?: number; // Auto top-up when balance falls below this
   autoTopUpAmount?: number; // Amount to top-up automatically
+  // Stripe integration
+  stripeCustomerId?: string; // Stripe customer ID for this wallet
   createdAt: Date;
   updatedAt: Date;
 }
@@ -65,6 +75,24 @@ const WalletSchema = new Schema<IWallet>(
       type: Number,
       default: 27.4,
     },
+    // Escrow and pending balances
+    escrowBalance: {
+      type: Number,
+      default: 0,
+    },
+    pendingWithdrawals: {
+      type: Number,
+      default: 0,
+    },
+    // Wallet status
+    status: {
+      type: String,
+      enum: ['active', 'frozen', 'suspended'],
+      default: 'active',
+    },
+    freezeReason: String,
+    freezeDate: Date,
+    frozenBy: String,
     // External wallet integration
     externalWalletId: String,
     externalWalletBalance: Number,
@@ -81,13 +109,15 @@ const WalletSchema = new Schema<IWallet>(
     },
     autoTopUpThreshold: Number,
     autoTopUpAmount: Number,
+    // Stripe integration
+    stripeCustomerId: String,
   },
   { timestamps: true }
 );
 
 // Calculate totalBalance before saving
 WalletSchema.pre<IWallet>("save", function (next) {
-  this.totalBalance = this.balance + this.locked + this.referralEarnings;
+  this.totalBalance = this.balance + this.locked + this.referralEarnings + this.escrowBalance;
   next();
 });
 

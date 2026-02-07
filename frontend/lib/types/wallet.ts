@@ -250,3 +250,4 @@ export interface WalletStats {
   savingStreak: number
   goalProgress: number
 }
+

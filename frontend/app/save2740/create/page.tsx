@@ -4,9 +4,12 @@ import { useState, useEffect } from 'react';
 import { StartSave2740 } from '@/components/save2740/start-save2740';
 import { SelectSavingsMode } from '@/components/save2740/select-savings-mode';
 import { PlanSummary } from '@/components/save2740/plan-summary';
+import { ConfirmPlan } from '@/components/save2740/confirm-plan';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { apiClient } from '@/lib/api-client';
+import { toast } from 'sonner';
 
 interface PlanFormState {
   name: string;
@@ -18,7 +21,7 @@ interface PlanFormState {
 }
 
 export default function CreateSave2740Page() {
-  const [step, setStep] = useState<'start' | 'mode' | 'summary'>('start');
+  const [step, setStep] = useState<'start' | 'mode' | 'summary' | 'confirm'>('start');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<PlanFormState>({
@@ -39,17 +42,17 @@ export default function CreateSave2740Page() {
   };
 
   const handleModeSelect = (mode: 'daily' | 'weekly') => {
-    const amounts = {
-      dailyAmount: formData.savingsMode === 'daily' ? (formData.targetAmount / 365) : undefined,
-      weeklyAmount: formData.savingsMode === 'weekly' ? (formData.targetAmount / 52) : undefined,
-    };
-    
     setFormData({
       ...formData,
       savingsMode: mode,
-      ...(mode === 'daily' ? { dailyAmount: formData.targetAmount / 365 } : { weeklyAmount: formData.targetAmount / 52 }),
+      dailyAmount: mode === 'daily' ? formData.targetAmount / 365 : undefined,
+      weeklyAmount: mode === 'weekly' ? formData.targetAmount / 52 : undefined,
     });
     setStep('summary');
+  };
+
+  const handleSummaryConfirm = () => {
+    setStep('confirm');
   };
 
   const handleCreatePlan = async () => {
@@ -62,33 +65,29 @@ export default function CreateSave2740Page() {
           ? formData.dailyAmount
           : (formData.weeklyAmount || 0) / 7;
 
-      const response = await fetch('/api/save2740', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_AUTH_TOKEN}`,
-        },
-        body: JSON.stringify({
-          planName: formData.name,
-          description: formData.description,
-          totalTargetAmount: formData.targetAmount,
-          savingsMode: formData.savingsMode,
-          dailySavingsAmount: dailyAmount,
-          autoFund: false,
-        }),
+      const weeklyAmount =
+        formData.savingsMode === 'weekly'
+          ? formData.weeklyAmount
+          : undefined;
+
+      const response = await apiClient.post('/api/save2740', {
+        planName: formData.name,
+        description: formData.description,
+        totalTargetAmount: formData.targetAmount,
+        savingsMode: formData.savingsMode,
+        dailySavingsAmount: dailyAmount,
+        weeklySavingsAmount: weeklyAmount,
+        autoFund: false,
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to create plan');
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success && response.data) {
+        toast.success('Plan created successfully!');
         // Redirect to active plan
-        window.location.href = `/save2740/active?id=${data.data.id}`;
+        setTimeout(() => {
+          window.location.href = `/save2740/active?id=${response.data._id || response.data.id}`;
+        }, 1000);
       } else {
-        setError(data.error || 'Failed to create plan');
+        throw new Error(typeof response.error === 'string' ? response.error : 'Failed to create plan');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create plan');
@@ -103,7 +102,7 @@ export default function CreateSave2740Page() {
         {/* Breadcrumb */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Create Your Save2740 Plan</h1>
-          <p className="text-gray-600 mt-2">Step {step === 'start' ? 1 : step === 'mode' ? 2 : 3} of 3</p>
+          <p className="text-gray-600 mt-2">Step {step === 'start' ? 1 : step === 'mode' ? 2 : step === 'summary' ? 3 : 4} of 4</p>
         </div>
 
         {/* Error Alert */}
@@ -146,31 +145,28 @@ export default function CreateSave2740Page() {
               weeklyAmount={formData.weeklyAmount}
               startDate={new Date().toISOString().split('T')[0]}
               targetCompletionDate={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-              onConfirm={handleCreatePlan}
+              onConfirm={handleSummaryConfirm}
               onBack={() => setStep('mode')}
             />
-            <div className="mt-6 flex gap-3">
-              <Button variant="outline" onClick={() => setStep('mode')} className="flex-1">
-                Back
-              </Button>
-              <Button
-                onClick={handleCreatePlan}
-                disabled={loading}
-                className="flex-1 bg-gradient-to-r from-brand-green to-green-600"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  'Create Plan'
-                )}
-              </Button>
-            </div>
+          </div>
+        )}
+
+        {/* Step 4: Confirm */}
+        {step === 'confirm' && (
+          <div>
+            <ConfirmPlan
+              planName={formData.name}
+              targetAmount={formData.targetAmount}
+              savingsMode={formData.savingsMode!}
+              amount={formData.savingsMode === 'daily' ? (formData.dailyAmount || 0) : (formData.weeklyAmount || 0)}
+              onConfirm={handleCreatePlan}
+              onBack={() => setStep('summary')}
+              loading={loading}
+            />
           </div>
         )}
       </div>
     </div>
   );
 }
+

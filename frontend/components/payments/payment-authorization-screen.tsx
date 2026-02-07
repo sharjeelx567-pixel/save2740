@@ -246,3 +246,4 @@ export function PaymentAuthorizationScreen({ authorization, onConfirm }: Payment
     </Card>
   );
 }
+

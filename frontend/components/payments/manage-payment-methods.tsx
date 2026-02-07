@@ -288,3 +288,4 @@ export function ManagePaymentMethods({ onMethodSelected }: ManagePaymentMethodsP
     </div>
   );
 }
+

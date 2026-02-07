@@ -41,22 +41,30 @@ export function LogoutModal({ open, onOpenChange }: LogoutModalProps) {
         console.error('Logout failed:', data.error);
       }
 
-      // Clear all auth data regardless of response
+      // Clear ALL auth-related data regardless of response
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('session');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('pending_email_verification');
+      localStorage.removeItem('temp_user');
 
       // Close modal
       onOpenChange(false);
 
-      // Redirect to login
-      router.push('/auth/login');
+      // Force full page reload to clear React Query cache and all state
+      window.location.href = '/auth/login';
     } catch (error) {
       console.error('Logout error:', error);
-      // Still logout on error
+      // Still logout on error - clear all data
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('session');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('pending_email_verification');
+      localStorage.removeItem('temp_user');
       onOpenChange(false);
-      router.push('/auth/login');
+      window.location.href = '/auth/login';
     } finally {
       setLoading(false);
     }
@@ -91,3 +99,4 @@ export function LogoutModal({ open, onOpenChange }: LogoutModalProps) {
     </AlertDialog>
   );
 }
+

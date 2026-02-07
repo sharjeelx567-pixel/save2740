@@ -33,6 +33,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
+import { WalletService } from '@/lib/wallet-service'
 
 interface Transaction {
   id: string
@@ -79,19 +80,21 @@ export function TransactionHistory() {
           sortBy: sortBy,
         })
 
-        const response = await fetch(`/api/wallet/transactions?${params}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
-          },
-        })
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch transactions')
+        const response = await WalletService.getTransactions(
+          typeFilter === 'all' ? undefined : typeFilter,
+          undefined,
+          undefined
+        )
+        
+        if (response.success && response.data) {
+          const data = response.data.data || response.data
+          setTransactions(data.transactions || [])
+          const total = data.total || 0
+          const pageSize = data.pageSize || 10
+          setTotalPages(Math.ceil(total / pageSize))
+        } else {
+          throw new Error(response.error?.error || 'Failed to fetch transactions')
         }
-
-        const result: TransactionHistoryResponse = await response.json()
-        setTransactions(result.transactions)
-        setTotalPages(result.totalPages)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to load transactions'
         setError(message)
@@ -355,3 +358,4 @@ export function TransactionHistory() {
     </div>
   )
 }
+

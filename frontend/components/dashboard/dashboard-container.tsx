@@ -8,22 +8,10 @@
 
 import React, { useState, useEffect } from 'react'
 import { DashboardAPI, DashboardStats, StreakInfo, ContributionStatus } from '@/lib/dashboard-api'
-import dynamic from 'next/dynamic'
-import { Loader2, AlertCircle } from 'lucide-react'
-
-// Lazy load heavy components with skeletons
-const HeroCard = dynamic(() => import('./enhanced-hero-card').then(mod => mod.HeroCard), {
-  loading: () => <div className="w-full h-[300px] bg-slate-100/50 animate-pulse rounded-3xl" />,
-  ssr: false
-})
-const EnhancedStatCards = dynamic(() => import('./enhanced-stat-cards').then(mod => mod.EnhancedStatCards), {
-  loading: () => <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[120px] bg-slate-100/50 animate-pulse rounded-xl" />,
-  ssr: false
-})
-const EnhancedTodayContribution = dynamic(() => import('./enhanced-today-contribution').then(mod => mod.EnhancedTodayContribution), {
-  loading: () => <div className="w-full h-[200px] bg-slate-100/50 animate-pulse rounded-3xl" />,
-  ssr: false
-})
+import { AlertCircle } from 'lucide-react'
+import { HeroCard } from './enhanced-hero-card'
+import { EnhancedStatCards } from './enhanced-stat-cards'
+import { EnhancedTodayContribution } from './enhanced-today-contribution'
 
 interface DashboardContainerProps {
   userId?: string
@@ -66,19 +54,7 @@ export function DashboardContainer({ userId, goalAmount = 27400 }: DashboardCont
     fetchDashboardData()
   }, [])
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-brand-green mx-auto mb-4" />
-          <p className="text-gray-600">Loading your dashboard...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Error state
+  // Error state (no loading state - show immediately)
   if (error) {
     return (
       <div className="rounded-lg bg-red-50 p-6 text-center">
@@ -209,3 +185,4 @@ export function DashboardContainer({ userId, goalAmount = 27400 }: DashboardCont
     </div>
   )
 }
+

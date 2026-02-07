@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Check } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/context/auth-context";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,6 +16,8 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
 
+  const { login } = useAuth(); // Hooks must be at top level
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -25,37 +28,14 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://save-2740-backend.vercel.app";
-      const response = await fetch(`${apiUrl}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-        credentials: "include",
-      });
-
-      const data = await response.json();
-      console.log("Login response:", { status: response.status, ok: response.ok, data });
-
-      if (!response.ok) {
-        setError(data.error || "Login failed");
-        setIsLoading(false);
-        return;
-      }
-
-      // Extract from correct structure: data.data.session.accessToken
-      if (data.data?.session?.accessToken) {
-        localStorage.setItem("token", data.data.session.accessToken);
-        localStorage.setItem("userId", data.data.user.id);
-        localStorage.setItem("session", JSON.stringify(data.data.session));
-        localStorage.setItem("user", JSON.stringify(data.data.user));
-      }
+      await login({ email, password });
 
       // Login successful - redirect to dashboard
-      console.log("Login successful, redirecting to dashboard...");
+      console.log("🚀 Redirecting to dashboard...");
       router.push("/");
     } catch (err) {
       console.error("Login error:", err);
-      setError("An error occurred. Please try again.");
+      setError(err instanceof Error ? err.message : "An error occurred. Please try again.");
       setIsLoading(false);
     }
   };
@@ -226,3 +206,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

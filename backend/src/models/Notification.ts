@@ -2,14 +2,21 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface INotification extends Document {
   userId: string;
-  type: 'payment_success' | 'payment_failed' | 'withdrawal_initiated' | 'withdrawal_completed' | 'referral_bonus' | 'savings_milestone' | 'kyc_status' | 'promotional';
+  type: 'payment_success' | 'payment_failed' | 'withdrawal_initiated' | 'withdrawal_completed' | 'referral_bonus' | 'savings_milestone' | 'kyc_status' | 'kyc_approved' | 'kyc_rejected' | 'kyc_reupload' | 'promotional' | 'chat_message' | 'support_reply' | 'info' | 'system' | 'warning' | 'alert' | 'login_attempt' | 'password_changed' | 'payment_method_added' | 'payment_method_removed' | 'security_alert' | 'low_balance' | 'transaction_failed' | 'reminder' | 'success' | 'reward' | 'streak' | 'funding';
   title: string;
   message: string;
+  isCritical: boolean; // Cannot be dismissed without acknowledgment
+  dismissedAt?: Date;
+  acknowledgedAt?: Date;
   relatedData?: {
     transactionId?: string;
     withdrawalId?: string;
     referralId?: string;
     amount?: number;
+    chatUserId?: string;
+    chatUserName?: string;
+    adminId?: string;
+    adminName?: string;
   };
   read: boolean;
   readAt?: Date;
@@ -40,7 +47,28 @@ const notificationSchema = new Schema<INotification>(
         'referral_bonus',
         'savings_milestone',
         'kyc_status',
+        'kyc_approved',
+        'kyc_rejected',
+        'kyc_reupload',
         'promotional',
+        'chat_message',
+        'support_reply',
+        'info',
+        'system',
+        'warning',
+        'alert',
+        'login_attempt',
+        'password_changed',
+        'payment_method_added',
+        'payment_method_removed',
+        'security_alert',
+        'low_balance',
+        'transaction_failed',
+        'reminder',
+        'success',
+        'reward',
+        'streak',
+        'funding'
       ],
       required: true,
       index: true,
@@ -53,11 +81,22 @@ const notificationSchema = new Schema<INotification>(
       type: String,
       required: true,
     },
+    isCritical: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    dismissedAt: Date,
+    acknowledgedAt: Date,
     relatedData: {
       transactionId: String,
       withdrawalId: String,
       referralId: String,
       amount: Number,
+      chatUserId: String,
+      chatUserName: String,
+      adminId: String,
+      adminName: String,
     },
     read: {
       type: Boolean,

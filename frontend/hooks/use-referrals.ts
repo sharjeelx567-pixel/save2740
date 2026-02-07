@@ -27,22 +27,21 @@ export function useReferrals() {
             setLoading(true);
             setError(null);
 
-            const response = await apiClient.get<{
-                referralCode: string;
-                totalReferrals: number;
-                totalEarnings: number;
-                pendingEarnings: number;
-            }>('/api/referrals/stats');
+            const response = await apiClient.get<any>('/api/referrals');
 
             if (response.success && response.data) {
+                // Handle double-wrapped response: { success, data: { success, data: {...} } }
+                const rawData = response.data?.data || response.data;
+                
                 // Map backend response to frontend ReferralData interface
+                const code = rawData.referralCode || '';
                 const mappedData: ReferralData = {
-                    referralCode: response.data.referralCode,
-                    referralLink: `${typeof window !== 'undefined' ? window.location.origin : ''}/signup?ref=${response.data.referralCode}`,
-                    friendsInvited: response.data.totalReferrals,
-                    qualifiedReferrals: response.data.totalReferrals, // Assuming all are qualified for now
-                    totalEarnings: response.data.totalEarnings,
-                    pendingEarnings: response.data.pendingEarnings,
+                    referralCode: code,
+                    referralLink: code ? `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/signup?ref=${code}` : '',
+                    friendsInvited: rawData.totalReferrals || 0,
+                    qualifiedReferrals: rawData.totalReferrals || 0, // Assuming all are qualified for now
+                    totalEarnings: rawData.totalEarnings || 0,
+                    pendingEarnings: rawData.pendingEarnings || 0,
                 };
                 setData(mappedData);
             } else {

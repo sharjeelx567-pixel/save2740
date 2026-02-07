@@ -65,3 +65,4 @@ export const AuthInput = React.forwardRef<HTMLInputElement, AuthInputProps>(
 );
 
 AuthInput.displayName = "AuthInput";
+

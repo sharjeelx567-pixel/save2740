@@ -213,3 +213,4 @@ export function showTransactionNotification(
   })
   window.dispatchEvent(event)
 }
+

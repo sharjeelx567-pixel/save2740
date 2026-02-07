@@ -159,3 +159,4 @@ export function HeroCard({ balance, goal, progress }: HeroCardProps) {
     </Card>
   )
 }
+

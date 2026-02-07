@@ -6,7 +6,7 @@
 "use client";
 
 import { ProtectedPage } from "@/components/protected-page";
-import { LoadingDelay } from "@/components/loading-delay";
+
 import { Sidebar } from "@/components/sidebar";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -83,76 +83,74 @@ function ProfilePageContent() {
   };
 
   return (
-    <LoadingDelay minDisplayTime={1000}>
-      <div className="flex h-screen bg-[#F8FAFC] overflow-hidden">
-        {/* Desktop Sidebar */}
-        <div className="hidden lg:block h-full">
-          <Sidebar />
+    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:block h-full">
+        <Sidebar />
+      </div>
+
+      {/* Mobile Sidebar */}
+      <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+        <SheetContent side="left" className="p-0 w-64">
+          <Sidebar onClose={() => setIsSidebarOpen(false)} />
+        </SheetContent>
+      </Sheet>
+
+      <main className="flex-1 overflow-y-auto flex flex-col">
+        <DashboardHeader title="Profile" onMenuClick={() => setIsSidebarOpen(true)} />
+
+        {/* Page Header */}
+        <div className="bg-white border-b border-slate-200 px-4 sm:px-5 md:px-8 lg:px-10 py-6 sm:py-8">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-2xl sm:text-3xl lg:text-3xl font-bold text-slate-900 mb-2">
+              Account Settings
+            </h1>
+            <p className="text-slate-600 text-sm sm:text-base">
+              Manage your profile, security, and preferences
+            </p>
+          </div>
         </div>
 
-        {/* Mobile Sidebar */}
-        <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-          <SheetContent side="left" className="p-0 w-64">
-            <Sidebar onClose={() => setIsSidebarOpen(false)} />
-          </SheetContent>
-        </Sheet>
-
-        <main className="flex-1 overflow-y-auto flex flex-col">
-          <DashboardHeader title="Profile" onMenuClick={() => setIsSidebarOpen(true)} />
-
-          {/* Page Header */}
-          <div className="bg-white border-b border-slate-200 px-4 sm:px-5 md:px-8 lg:px-10 py-6 sm:py-8">
-            <div className="max-w-7xl mx-auto">
-              <h1 className="text-2xl sm:text-3xl lg:text-3xl font-bold text-slate-900 mb-2">
-                Account Settings
-              </h1>
-              <p className="text-slate-600 text-sm sm:text-base">
-                Manage your profile, security, and preferences
-              </p>
-            </div>
-          </div>
-
-          {/* Tabs - Mobile Responsive with Horizontal Scroll */}
-          <div className="bg-white border-b border-slate-200 sticky top-[73px] z-10">
-            <div className="max-w-7xl mx-auto">
-              {/* Horizontal scroll container for mobile */}
-              <div className="overflow-x-auto hide-scrollbar">
-                <div className="flex gap-1 px-2 sm:px-4 md:px-8 lg:px-10 min-w-max">
-                  {tabs.map((tab) => {
-                    const Icon = tab.icon;
-                    const isActive = activeTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => {
-                          setActiveTab(tab.id);
-                          if (tab.id === "profile") setSubTab("overview");
-                        }}
-                        className={`
-                          flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b-2 transition-all whitespace-nowrap
-                          ${isActive
-                            ? "border-brand-green text-brand-green font-semibold"
-                            : "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
-                          }
-                        `}
-                      >
-                        <Icon className="w-4 h-4 shrink-0" />
-                        <span className="text-xs sm:text-sm md:text-base">{tab.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+        {/* Tabs - Mobile Responsive with Horizontal Scroll */}
+        <div className="bg-white border-b border-slate-200 sticky top-[73px] z-10">
+          <div className="max-w-7xl mx-auto">
+            {/* Horizontal scroll container for mobile */}
+            <div className="overflow-x-auto hide-scrollbar">
+              <div className="flex gap-1 px-2 sm:px-4 md:px-8 lg:px-10 min-w-max">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        if (tab.id === "profile") setSubTab("overview");
+                      }}
+                      className={`
+                        flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b-2 transition-all whitespace-nowrap
+                        ${isActive
+                          ? "border-brand-green text-brand-green font-semibold"
+                          : "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
+                        }
+                      `}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="text-xs sm:text-sm md:text-base">{tab.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Content */}
-          <div className="flex-1 px-4 sm:px-5 md:px-8 lg:px-10 py-6 sm:py-8">
-            <div className="max-w-7xl mx-auto">{renderContent()}</div>
-          </div>
-        </main>
-      </div>
-    </LoadingDelay>
+        {/* Content */}
+        <div className="flex-1 px-4 sm:px-5 md:px-8 lg:px-10 py-6 sm:py-8">
+          <div className="max-w-7xl mx-auto">{renderContent()}</div>
+        </div>
+      </main>
+    </div>
   );
 }
 
@@ -163,3 +161,4 @@ export default function ProfilePage() {
     </ProtectedPage>
   );
 }
+

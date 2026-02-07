@@ -3,6 +3,7 @@
 import { Calendar, TrendingUp, CheckCircle2 } from "lucide-react"
 import { useWallet } from "@/hooks/use-wallet"
 import { Skeleton } from "@/components/ui/skeleton"
+import { FINANCIAL } from "@/lib/constants"
 
 /**
  * TodayContribution Component
@@ -11,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 export function TodayContribution() {
   const { data, loading } = useWallet()
 
-  const dailySavingAmount = data?.dailySavingAmount || 27.4
+  const dailySavingAmount = data?.dailySavingAmount || FINANCIAL.DAILY_SAVINGS_AMOUNT
   const isContributionMade = data?.lastDailySavingDate 
     ? new Date(data.lastDailySavingDate).toDateString() === new Date().toDateString()
     : false
@@ -95,3 +96,4 @@ export function TodayContribution() {
     </div>
   )
 }
+

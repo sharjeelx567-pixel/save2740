@@ -79,8 +79,18 @@ export interface StatCard {
  */
 export interface ApiErrorResponse {
   error: string;
+  message?: string;
   code?: string;
   status?: number;
+}
+
+/**
+ * Helper to extract error message
+ */
+export function getErrorMessage(error: string | ApiErrorResponse | undefined, fallback: string = 'An error occurred'): string {
+  if (!error) return fallback;
+  if (typeof error === 'string') return error;
+  return error.error || error.message || fallback;
 }
 
 /**
@@ -90,4 +100,7 @@ export interface ApiResponse<T> {
   data?: T;
   error?: ApiErrorResponse;
   success: boolean;
+  pagination?: any;
+  total?: number;
 }
+

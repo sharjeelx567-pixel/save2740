@@ -1,143 +1,122 @@
-'use client';
+"use client"
 
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, Download, Mail } from 'lucide-react';
-import { PaymentReceipt } from '@/lib/types/payment';
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { CheckCircle2, Download } from "lucide-react"
 
 interface PaymentReceiptProps {
-  receipt: PaymentReceipt;
-  onDownload?: () => void;
-}
-
-export function PaymentReceiptComponent({ receipt, onDownload }: PaymentReceiptProps) {
-  const { toast } = useToast();
-
-  const handleDownload = () => {
-    toast({
-      title: 'Success',
-      description: 'Receipt downloaded',
-    });
-
-    if (onDownload) {
-      onDownload();
+    transaction: {
+        transactionId: string
+        amount: number
+        type: 'deposit' | 'withdrawal'
+        status: 'completed' | 'pending' | 'failed'
+        description: string
+        createdAt: string
+        paymentMethod?: string
     }
-  };
-
-  const handleEmailReceipt = () => {
-    toast({
-      title: 'Success',
-      description: 'Receipt sent to your email',
-    });
-  };
-
-  return (
-    <Card className="w-full max-w-md p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <CheckCircle className="w-6 h-6 text-green-600" />
-        <h3 className="text-lg font-bold">Payment Receipt</h3>
-      </div>
-
-      <div className="space-y-4 mb-6">
-        {/* Header */}
-        <div className="text-center pb-4 border-b">
-          <p className="text-sm text-gray-600">Received by</p>
-          <p className="text-lg font-bold">{receipt.merchantName}</p>
-        </div>
-
-        {/* Amount */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 text-center">
-          <p className="text-sm text-gray-600 mb-1">Amount Paid</p>
-          <p className="text-3xl font-bold text-green-600">
-            ${(receipt.amount / 100).toFixed(2)}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">{receipt.currency}</p>
-        </div>
-
-        {/* Details Grid */}
-        <div className="space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Receipt Number</span>
-            <span className="font-mono font-semibold">{receipt.receiptNumber}</span>
-          </div>
-
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Authorization Code</span>
-            <span className="font-mono font-semibold">{receipt.authorizationCode}</span>
-          </div>
-
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Date & Time</span>
-            <span className="font-semibold">{new Date(receipt.timestamp).toLocaleString()}</span>
-          </div>
-
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Payment Method</span>
-            <span className="font-semibold font-mono">•••• {receipt.paymentMethodLast4}</span>
-          </div>
-
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Status</span>
-            <Badge className="bg-green-100 text-green-800">
-              {receipt.status.toUpperCase()}
-            </Badge>
-          </div>
-        </div>
-
-        {/* Breakdown */}
-        <div className="border-t pt-3 space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Subtotal</span>
-            <span>${(receipt.subtotal / 100).toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Tax</span>
-            <span>${(receipt.tax / 100).toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Processing Fee</span>
-            <span className="text-orange-600">-${(receipt.processingFee / 100).toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between font-semibold border-t pt-2">
-            <span>Total</span>
-            <span className="text-green-600">${(receipt.total / 100).toFixed(2)}</span>
-          </div>
-        </div>
-
-        {/* Description */}
-        {receipt.description && (
-          <div className="bg-gray-50 rounded p-3 text-sm">
-            <p className="text-gray-600 mb-1">Description</p>
-            <p className="font-medium">{receipt.description}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="space-y-2">
-        <Button
-          onClick={handleDownload}
-          className="w-full bg-brand-green hover:bg-brand-green/90"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Download Receipt
-        </Button>
-
-        <Button
-          onClick={handleEmailReceipt}
-          variant="outline"
-          className="w-full"
-        >
-          <Mail className="mr-2 h-4 w-4" />
-          Email Receipt
-        </Button>
-      </div>
-
-      <p className="text-xs text-gray-500 text-center mt-4">
-        Receipt saved to your account history
-      </p>
-    </Card>
-  );
+    onClose?: () => void
 }
+
+export function PaymentReceipt({ transaction, onClose }: PaymentReceiptProps) {
+    const handleDownload = () => {
+        const receipt = `
+PAYMENT RECEIPT
+================
+
+Transaction ID: ${transaction.transactionId}
+Date: ${new Date(transaction.createdAt).toLocaleString()}
+Type: ${transaction.type.toUpperCase()}
+Amount: $${transaction.amount.toFixed(2)}
+Status: ${transaction.status.toUpperCase()}
+Description: ${transaction.description}
+${transaction.paymentMethod ? `Payment Method: ${transaction.paymentMethod}` : ''}
+
+Thank you for your transaction!
+        `.trim()
+
+        const blob = new Blob([receipt], { type: 'text/plain' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `receipt-${transaction.transactionId}.txt`
+        a.click()
+        window.URL.revokeObjectURL(url)
+    }
+
+    return (
+        <Card className="max-w-md mx-auto">
+            <CardContent className="p-6">
+                <div className="text-center mb-6">
+                    <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle2 className="h-8 w-8 text-brand-green" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Payment Receipt</h2>
+                    <p className="text-sm text-slate-600">Transaction completed successfully</p>
+                </div>
+
+                <div className="space-y-4 mb-6">
+                    <div className="flex justify-between py-2 border-b">
+                        <span className="text-slate-600">Transaction ID</span>
+                        <span className="font-mono text-sm">{transaction.transactionId}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b">
+                        <span className="text-slate-600">Date</span>
+                        <span className="font-medium">{new Date(transaction.createdAt).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b">
+                        <span className="text-slate-600">Type</span>
+                        <span className="font-medium capitalize">{transaction.type}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b">
+                        <span className="text-slate-600">Amount</span>
+                        <span className={`font-bold text-lg ${transaction.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
+                            {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toFixed(2)}
+                        </span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b">
+                        <span className="text-slate-600">Status</span>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            transaction.status === 'completed' ? 'bg-green-100 text-green-700' :
+                            transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
+                        }`}>
+                            {transaction.status.toUpperCase()}
+                        </span>
+                    </div>
+                    {transaction.description && (
+                        <div className="flex justify-between py-2 border-b">
+                            <span className="text-slate-600">Description</span>
+                            <span className="font-medium text-right">{transaction.description}</span>
+                        </div>
+                    )}
+                    {transaction.paymentMethod && (
+                        <div className="flex justify-between py-2">
+                            <span className="text-slate-600">Payment Method</span>
+                            <span className="font-medium">{transaction.paymentMethod}</span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex gap-3">
+                    <Button
+                        variant="outline"
+                        onClick={handleDownload}
+                        className="flex-1"
+                    >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download
+                    </Button>
+                    {onClose && (
+                        <Button
+                            onClick={onClose}
+                            className="flex-1 bg-brand-green hover:bg-emerald-600 text-white"
+                        >
+                            Close
+                        </Button>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+

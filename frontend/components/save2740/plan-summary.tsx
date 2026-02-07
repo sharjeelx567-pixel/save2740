@@ -54,7 +54,7 @@ export function PlanSummary({
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4">
           <h4 className="font-bold text-lg mb-2">{planName}</h4>
           {description && <p className="text-sm text-gray-600 mb-3">{description}</p>}
-          <p className="text-3xl font-bold text-blue-600">${(targetAmount / 100).toFixed(2)}</p>
+          <p className="text-3xl font-bold text-blue-600">${targetAmount.toFixed(2)}</p>
           <p className="text-xs text-gray-500 mt-1">Total Target Amount</p>
         </div>
 
@@ -63,7 +63,7 @@ export function PlanSummary({
           <Zap className="w-5 h-5 text-orange-600 mt-1 flex-shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-semibold">Savings Rate</p>
-            <p className="text-lg font-bold text-orange-600">${(amount! / 100).toFixed(2)} {frequency}</p>
+            <p className="text-lg font-bold text-orange-600">${amount!.toFixed(2)} {frequency}</p>
             <p className="text-xs text-gray-500">~${monthlyEquivalent}/month</p>
           </div>
         </div>
@@ -132,3 +132,4 @@ export function PlanSummary({
     </Card>
   );
 }
+

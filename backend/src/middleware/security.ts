@@ -24,7 +24,7 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
     const csrfToken = req.headers['x-csrf-token'] as string;
     const sessionToken = req.cookies?.csrfToken;
 
-    if (!csrfToken || !sessionToken || csrfToken !== sessionToken) {
+    if       (!csrfToken || !sessionToken || csrfToken !== sessionToken) {
         return res.status(403).json({
             success: false,
             error: 'Invalid CSRF token',
@@ -40,12 +40,14 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
  */
 export function generateCsrfToken(req: Request, res: Response): string {
     const token = crypto.randomBytes(32).toString('hex');
-    
+
+    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('csrfToken', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-origin in production
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        path: '/',
     });
 
     return token;
@@ -58,7 +60,7 @@ export function xssProtection(req: Request, res: Response, next: NextFunction) {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '1; mode=block');
-    res.setHeader('Content-Security-Policy', 
+    res.setHeader('Content-Security-Policy',
         "default-src 'self'; " +
         "script-src 'self' 'unsafe-inline' https://js.stripe.com; " +
         "style-src 'self' 'unsafe-inline'; " +
@@ -117,7 +119,7 @@ export async function ipRateLimit(
     return async (req: Request, res: Response, next: NextFunction) => {
         try {
             const { checkRateLimit } = await import('../config/redis');
-            
+
             const ip = req.ip || req.socket.remoteAddress || 'unknown';
             const key = `ip_ratelimit:${ip}`;
 
@@ -156,15 +158,15 @@ export function requestId(req: Request, res: Response, next: NextFunction) {
 export function securityHeaders(req: Request, res: Response, next: NextFunction) {
     // Referrer Policy
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    
+
     // Permissions Policy
-    res.setHeader('Permissions-Policy', 
+    res.setHeader('Permissions-Policy',
         'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()'
     );
-    
+
     // Remove X-Powered-By header
     res.removeHeader('X-Powered-By');
-    
+
     next();
 }
 
@@ -191,7 +193,7 @@ export function validateOrigin(req: Request, res: Response, next: NextFunction) 
 
     // Log suspicious requests
     console.warn(`Suspicious request from origin: ${origin}, IP: ${req.ip}`);
-    
+
     return res.status(403).json({
         success: false,
         error: 'Forbidden origin',

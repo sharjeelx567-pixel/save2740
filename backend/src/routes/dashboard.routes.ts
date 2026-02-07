@@ -108,13 +108,112 @@ router.get('/achievements', authenticateToken, async (req: AuthRequest, res: Res
   try {
     await connectDB();
 
-    // For now, return empty achievements
-    // You can implement achievement logic based on your models
+    const wallet = await Wallet.findOne({ userId: req.userId });
+    
+    // Calculate achievements based on wallet data
+    const balance = wallet?.balance || 0;
+    const currentStreak = wallet?.currentStreak || 0;
+    
+    // Define achievements with unlock conditions
+    // Matches milestones in frontend milestone-modal.tsx
+    const achievements = [
+      // Streak achievements
+      {
+        id: 'streak_7',
+        title: '7 Day Streak',
+        desc: 'Consistency is key!',
+        completed: currentStreak >= 7,
+        locked: currentStreak < 7,
+        icon: 'flame',
+        points: 50
+      },
+      {
+        id: 'streak_30',
+        title: 'Month Master',
+        desc: '30 days straight!',
+        completed: currentStreak >= 30,
+        locked: currentStreak < 30,
+        icon: 'calendar',
+        points: 200
+      },
+      {
+        id: 'streak_100',
+        title: 'Century Club',
+        desc: '100 day saving streak',
+        completed: currentStreak >= 100,
+        locked: currentStreak < 100,
+        icon: 'trophy',
+        points: 500
+      },
+      // Balance achievements - matches milestone-modal.tsx MILESTONES
+      {
+        id: 'balance_500',
+        title: 'Savings Starter',
+        desc: 'Save $500 to unlock',
+        completed: balance >= 500,
+        locked: balance < 500,
+        icon: 'seedling',
+        points: 100
+      },
+      {
+        id: 'balance_1000',
+        title: 'Bronze Saver',
+        desc: 'Save $1,000 to unlock',
+        completed: balance >= 1000,
+        locked: balance < 1000,
+        icon: 'medal-bronze',
+        points: 200
+      },
+      {
+        id: 'balance_2500',
+        title: 'Silver Saver',
+        desc: 'Save $2,500 to unlock',
+        completed: balance >= 2500,
+        locked: balance < 2500,
+        icon: 'medal-silver',
+        points: 300
+      },
+      {
+        id: 'balance_5000',
+        title: 'Gold Saver',
+        desc: 'Save $5,000 to unlock',
+        completed: balance >= 5000,
+        locked: balance < 5000,
+        icon: 'medal-gold',
+        points: 500
+      },
+      {
+        id: 'balance_7500',
+        title: 'Platinum Saver',
+        desc: 'Save $7,500 to unlock',
+        completed: balance >= 7500,
+        locked: balance < 7500,
+        icon: 'diamond',
+        points: 750
+      },
+      {
+        id: 'balance_10000',
+        title: 'Master Saver',
+        desc: 'Reach the $10,000 yearly goal',
+        completed: balance >= 10000,
+        locked: balance < 10000,
+        icon: 'crown',
+        points: 1000
+      }
+    ];
+    
+    // Calculate total points from completed achievements
+    const totalPoints = achievements
+      .filter(a => a.completed)
+      .reduce((sum, a) => sum + a.points, 0);
+
     res.json({
       success: true,
       data: {
-        achievements: [],
-        totalPoints: 0
+        achievements,
+        totalPoints,
+        unlockedCount: achievements.filter(a => a.completed).length,
+        totalCount: achievements.length
       }
     });
   } catch (error) {

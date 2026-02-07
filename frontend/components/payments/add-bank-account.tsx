@@ -256,3 +256,4 @@ export function AddBankAccount({ onSuccess }: AddBankAccountProps) {
     </Card>
   );
 }
+

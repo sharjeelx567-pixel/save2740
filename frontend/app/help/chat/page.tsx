@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Paperclip, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/context/auth-context";
+import { chatService } from "@/lib/services/chat.service";
 
 interface Message {
     id: string;
@@ -30,47 +32,61 @@ const initialMessages: Message[] = [
 ];
 
 function LiveChatContent() {
+    const { user } = useAuth() as any;
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [messages, setMessages] = useState<Message[]>(initialMessages);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [inputMessage, setInputMessage] = useState("");
-    const [isTyping, setIsTyping] = useState(false);
+    const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
+    // Load messages and subscribe
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const unsubscribe = chatService.subscribeToMessages(user.id, (newMessages) => {
+            const formattedMessages: Message[] = newMessages.map(msg => ({
+                id: msg.id,
+                sender: msg.senderType === 'admin' ? 'agent' : 'user',
+                name: msg.senderName || (msg.senderType === 'admin' ? 'Support' : 'You'),
+                message: msg.message,
+                timestamp: msg.timestamp instanceof Date ? msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString(),
+            }));
+            setMessages(formattedMessages);
+            scrollToBottom();
+        });
+
+        // Mark as read when opening
+        chatService.markAsRead(user.id);
+
+        return () => unsubscribe();
+    }, [user?.id]);
+
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
     const handleSend = async () => {
-        if (!inputMessage.trim()) return;
+        if (!inputMessage.trim() || !user) return;
 
-        const userMessage: Message = {
-            id: Date.now().toString(),
-            sender: "user",
-            name: "You",
-            message: inputMessage,
-            timestamp: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-        };
+        try {
+            setLoading(true);
+            const messageText = inputMessage;
+            setInputMessage("");
 
-        setMessages([...messages, userMessage]);
-        setInputMessage("");
-        setIsTyping(true);
-
-        // Simulate agent response
-        setTimeout(() => {
-            const agentMessage: Message = {
-                id: (Date.now() + 1).toString(),
-                sender: "agent",
-                name: "Sarah (Support Agent)",
-                message: "Thanks for reaching out! I'm looking into that for you. Please give me a moment.",
-                timestamp: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-            };
-            setMessages((prev) => [...prev, agentMessage]);
-            setIsTyping(false);
-        }, 2000);
+            await chatService.sendMessage(
+                user.id,
+                messageText,
+                `${user.firstName} ${user.lastName}`
+            );
+        } catch (error) {
+            console.error("Failed to send message", error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -117,8 +133,8 @@ function LiveChatContent() {
                                                 <p className="text-xs text-gray-600 mb-1 px-1">{msg.name}</p>
                                                 <div
                                                     className={`rounded-2xl px-4 py-3 ${msg.sender === "user"
-                                                            ? "bg-brand-green text-white rounded-tr-none"
-                                                            : "bg-white text-gray-900 shadow-sm rounded-tl-none"
+                                                        ? "bg-brand-green text-white rounded-tr-none"
+                                                        : "bg-white text-gray-900 shadow-sm rounded-tl-none"
                                                         }`}
                                                 >
                                                     <p>{msg.message}</p>
@@ -133,18 +149,8 @@ function LiveChatContent() {
                                         </div>
                                     ))}
 
-                                    {isTyping && (
-                                        <div className="flex justify-start">
-                                            <div className="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
-                                                <div className="flex gap-1">
-                                                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-                                                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
-                                                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
                                     <div ref={messagesEndRef} />
+
                                 </div>
                             </CardContent>
 
@@ -205,3 +211,4 @@ export default function LiveChatPage() {
         </ProtectedPage>
     );
 }
+

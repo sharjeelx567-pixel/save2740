@@ -16,6 +16,8 @@ const PocketSchema = new Schema({
   icon: { type: String }, // For UI icon/emoji
   color: { type: String }, // For UI color
   deadline: { type: Date },
+  dailyAmount: { type: Number, default: 0 },
+  multiplier: { type: Number, default: 1 },
   status: { type: String, enum: ['active', 'completed', 'cancelled'], default: 'active' },
 }, { timestamps: true });
 
@@ -47,7 +49,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     await connectDB();
 
-    const { name, targetAmount, deadline, icon, color } = req.body;
+    const { name, targetAmount, deadline, icon, color, dailyAmount, multiplier } = req.body;
 
     if (!name || !targetAmount) {
       return res.status(400).json({ error: 'Name and target amount required' });
@@ -59,7 +61,9 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       targetAmount,
       deadline,
       icon,
-      color
+      color,
+      dailyAmount: dailyAmount || 0,
+      multiplier: multiplier || 1
     });
 
     res.status(201).json({
@@ -107,7 +111,8 @@ router.post('/:id/fund', authenticateToken, async (req: AuthRequest, res: Respon
 
     // Check completion
     if (pocket.currentAmount >= pocket.targetAmount) {
-      // logic for completion notification
+      pocket.status = 'completed';
+      // logic for completion notification could go here
     }
 
     await wallet.save();
@@ -169,8 +174,9 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response)
 router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     await connectDB();
-    const { name, targetAmount, deadline, icon, color } = req.body;
+    const { name, targetAmount, deadline, icon, color, dailyAmount, multiplier } = req.body;
 
+    // Explicitly cast req.params.id to string to avoid type issues if needed, but it's usually string
     const pocket = await Pocket.findOne({ _id: req.params.id, userId: req.userId });
     if (!pocket) return res.status(404).json({ error: 'Pocket not found' });
 
@@ -179,6 +185,8 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
     if (deadline) pocket.deadline = deadline;
     if (icon) pocket.icon = icon;
     if (color) pocket.color = color;
+    if (dailyAmount !== undefined) pocket.dailyAmount = dailyAmount;
+    if (multiplier !== undefined) pocket.multiplier = multiplier;
 
     await pocket.save();
 

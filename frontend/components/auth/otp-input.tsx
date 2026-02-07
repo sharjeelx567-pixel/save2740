@@ -112,3 +112,4 @@ export const OTPInput: React.FC<OTPInputProps> = ({
     </div>
   );
 };
+

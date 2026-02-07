@@ -109,3 +109,4 @@ export const AccountLockedScreen: React.FC<AccountLockedScreenProps> = ({
     </div>
   );
 };
+

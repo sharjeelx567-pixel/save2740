@@ -1,8 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { ArrowDown, AlertCircle, Check, Clock } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ArrowDown, AlertCircle, Check, Clock, Loader2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { apiClient } from "@/lib/api-client"
+import { ProtectedPage } from "@/components/protected-page"
+import { toast } from "sonner"
 
 type WithdrawalStep = "amount" | "account" | "confirm" | "processing" | "success"
 
@@ -15,42 +18,100 @@ interface WithdrawalRecord {
   transactionId: string
 }
 
-const MOCK_WITHDRAWAL_HISTORY: WithdrawalRecord[] = [
-  {
-    id: "1",
-    amount: 274.0,
-    date: "Dec 20, 2025",
-    status: "completed",
-    bankAccount: "Chase •••• 6789",
-    transactionId: "WTD-2025-001",
-  },
-  {
-    id: "2",
-    amount: 500.0,
-    date: "Dec 10, 2025",
-    status: "completed",
-    bankAccount: "Chase •••• 6789",
-    transactionId: "WTD-2025-002",
-  },
-]
+interface BankAccount {
+  id: string
+  name: string
+  last4: string
+  type: string
+}
 
 export default function WithdrawalPage() {
+  return (
+    <ProtectedPage>
+      <WithdrawalPageContent />
+    </ProtectedPage>
+  )
+}
+
+function WithdrawalPageContent() {
   const [currentStep, setCurrentStep] = useState<WithdrawalStep>("amount")
   const [amount, setAmount] = useState("")
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
-  const [withdrawalHistory, setWithdrawalHistory] = useState(MOCK_WITHDRAWAL_HISTORY)
+  const [withdrawalHistory, setWithdrawalHistory] = useState<WithdrawalRecord[]>([])
   const [error, setError] = useState("")
 
-  const availableBalance = 1250.5
+  // Data State
+  const [availableBalance, setAvailableBalance] = useState(0)
+  const [lockedBalance, setLockedBalance] = useState(0)
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+  const [isLoadingData, setIsLoadingData] = useState(true)
+  const [isProcessing, setIsProcessing] = useState(false)
+
   const minWithdrawal = 10
   const maxWithdrawal = availableBalance
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoadingData(true)
+      try {
+        // Fetch Wallet Data
+        const walletRes = await apiClient.get<any>('/api/wallet')
+        if (walletRes.success && walletRes.data) {
+          setAvailableBalance(walletRes.data.availableBalance || 0)
+          setLockedBalance(walletRes.data.lockedInPockets || 0)
+        }
+
+        // Fetch Payment Methods (Banks only)
+        const methodsRes = await apiClient.get<any[]>('/api/payment-methods')
+        if (methodsRes.success && methodsRes.data) {
+          const banks = methodsRes.data
+            .filter((m: any) => m.type === 'bank')
+            .map((m: any) => ({
+              id: m._id || m.id,
+              name: m.name || m.bankName || 'Bank Account',
+              last4: m.last4 || '****',
+              type: m.accountType || 'Checking'
+            }))
+          setBankAccounts(banks)
+        }
+
+        // Fetch Transaction History (Withdrawals)
+        const txRes = await apiClient.get<any>('/api/wallet/transactions')
+        if (txRes.success && txRes.data?.transactions) {
+          const withdrawals = txRes.data.transactions
+            .filter((tx: any) => tx.type === 'withdrawal' || tx.type === 'withdraw')
+            .map((tx: any) => ({
+              id: tx._id || tx.id,
+              amount: tx.amount,
+              date: new Date(tx.createdAt).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              }),
+              status: tx.status,
+              bankAccount: tx.paymentMethodLast4 ? `Account •••• ${tx.paymentMethodLast4}` : 'Bank Account',
+              transactionId: tx.transactionId || `WTD-${tx._id.substring(0, 6)}`
+            }))
+          setWithdrawalHistory(withdrawals)
+        }
+
+      } catch (err) {
+        console.error("Failed to fetch withdrawal data", err)
+        toast.error("Failed to load wallet data")
+      } finally {
+        setIsLoadingData(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   const handleAmountChange = (val: string) => {
     setAmount(val)
     setError("")
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep === "amount") {
       const num = parseFloat(amount)
       if (!num || num < minWithdrawal) {
@@ -69,24 +130,47 @@ export default function WithdrawalPage() {
       }
       setCurrentStep("confirm")
     } else if (currentStep === "confirm") {
+      setIsProcessing(true)
       setCurrentStep("processing")
-      // Simulate processing
-      setTimeout(() => {
-        const newRecord: WithdrawalRecord = {
-          id: String(withdrawalHistory.length + 1),
+
+      try {
+        const response = await apiClient.post('/api/wallet/withdraw', {
           amount: parseFloat(amount),
-          date: new Date().toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }),
-          status: "pending",
-          bankAccount: "Chase •••• 6789",
-          transactionId: `WTD-${Date.now()}`,
+          bankAccountId: selectedAccount,
+          reason: "User requested withdrawal"
+        })
+
+        if (response.success) {
+          // Wait a brief moment to show processing state
+          setTimeout(() => {
+            setCurrentStep("success")
+            setIsProcessing(false)
+            // Update history locally or refetch
+            const newRecord: WithdrawalRecord = {
+              id: "temp-new",
+              amount: parseFloat(amount),
+              date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+              status: "processing" as any, // Type hack if needed, or update interface
+              bankAccount: bankAccounts.find(b => b.id === selectedAccount)?.last4 ? `•••• ${bankAccounts.find(b => b.id === selectedAccount)?.last4}` : 'Bank Account',
+              transactionId: `WTD-NEW`
+            }
+            setWithdrawalHistory([newRecord, ...withdrawalHistory])
+            // Re-fetch balance
+            apiClient.get<any>('/api/wallet').then(res => {
+              if (res.success && res.data) setAvailableBalance(res.data.availableBalance)
+            })
+          }, 1500)
+        } else {
+          setError(response.error?.error || "Withdrawal failed")
+          setCurrentStep("confirm") // Go back
+          setIsProcessing(false)
         }
-        setWithdrawalHistory([newRecord, ...withdrawalHistory])
-        setCurrentStep("success")
-      }, 2000)
+      } catch (err) {
+        console.error("Withdrawal error", err)
+        setError("An unexpected error occurred")
+        setCurrentStep("confirm")
+        setIsProcessing(false)
+      }
     }
   }
 
@@ -95,6 +179,14 @@ export default function WithdrawalPage() {
     setAmount("")
     setSelectedAccount(null)
     setError("")
+  }
+
+  if (isLoadingData) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-green" />
+      </div>
+    )
   }
 
   // Step 1: Amount
@@ -145,15 +237,14 @@ export default function WithdrawalPage() {
                       Quick select
                     </label>
                     <div className="grid grid-cols-2 gap-2">
-                      {[100, 250, 500, availableBalance].map((val) => (
+                      {[100, 250, 500, availableBalance].filter(val => val <= availableBalance && val > 0).slice(0, 4).map((val) => (
                         <button
                           key={val}
                           onClick={() => handleAmountChange(val.toString())}
-                          className={`py-2 px-3 rounded-lg font-medium transition-colors text-sm ${
-                            amount === val.toString()
+                          className={`py-2 px-3 rounded-lg font-medium transition-colors text-sm ${amount === val.toString()
                               ? "bg-brand-green text-white"
                               : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                          }`}
+                            }`}
                         >
                           ${val.toFixed(0)}
                         </button>
@@ -170,7 +261,8 @@ export default function WithdrawalPage() {
 
                   <button
                     onClick={handleNext}
-                    className="w-full bg-brand-green text-white py-3 rounded-lg font-semibold hover:bg-brand-green/90 transition-colors"
+                    disabled={availableBalance < minWithdrawal}
+                    className="w-full bg-brand-green text-white py-3 rounded-lg font-semibold hover:bg-brand-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Continue
                   </button>
@@ -190,11 +282,11 @@ export default function WithdrawalPage() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-600 mb-1">Locked in Pockets</p>
-                      <p className="text-2xl font-bold text-brand-green">$500.00</p>
+                      <p className="text-2xl font-bold text-brand-green">${lockedBalance.toFixed(2)}</p>
                     </div>
                     <div className="pt-4 border-t border-slate-200">
                       <p className="text-xs text-slate-600 mb-1">Total Balance</p>
-                      <p className="text-2xl font-bold text-slate-900">$1,750.50</p>
+                      <p className="text-2xl font-bold text-slate-900">${(availableBalance + lockedBalance).toFixed(2)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -216,33 +308,36 @@ export default function WithdrawalPage() {
             <p className="text-slate-600 mb-8">Where should we send your withdrawal?</p>
 
             <div className="space-y-4 mb-8">
-              {[
-                { id: "1", name: "Chase Bank", last4: "6789", type: "Checking" },
-                { id: "2", name: "Bank of America", last4: "4321", type: "Savings" },
-              ].map((account) => (
-                <button
-                  key={account.id}
-                  onClick={() => {
-                    setSelectedAccount(account.id)
-                    setError("")
-                  }}
-                  className={`w-full p-4 border-2 rounded-lg transition-colors text-left ${
-                    selectedAccount === account.id
-                      ? "border-brand-green bg-emerald-50"
-                      : "border-slate-300 hover:border-slate-400"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-slate-900">{account.name}</p>
-                      <p className="text-sm text-slate-600">•••• {account.last4} • {account.type}</p>
+              {bankAccounts.length > 0 ? (
+                bankAccounts.map((account) => (
+                  <button
+                    key={account.id}
+                    onClick={() => {
+                      setSelectedAccount(account.id)
+                      setError("")
+                    }}
+                    className={`w-full p-4 border-2 rounded-lg transition-colors text-left ${selectedAccount === account.id
+                        ? "border-brand-green bg-emerald-50"
+                        : "border-slate-300 hover:border-slate-400"
+                      }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-slate-900">{account.name}</p>
+                        <p className="text-sm text-slate-600">•••• {account.last4} • {account.type}</p>
+                      </div>
+                      {selectedAccount === account.id && (
+                        <Check className="w-5 h-5 text-brand-green" />
+                      )}
                     </div>
-                    {selectedAccount === account.id && (
-                      <Check className="w-5 h-5 text-brand-green" />
-                    )}
-                  </div>
-                </button>
-              ))}
+                  </button>
+                ))
+              ) : (
+                <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-lg">
+                  <p className="text-slate-500 mb-2">No bank accounts linked</p>
+                  <p className="text-xs text-slate-400">Please add payment method first</p>
+                </div>
+              )}
             </div>
 
             {error && (
@@ -261,7 +356,8 @@ export default function WithdrawalPage() {
               </button>
               <button
                 onClick={handleNext}
-                className="flex-1 bg-brand-green text-white py-3 rounded-lg font-semibold hover:bg-brand-green/90 transition-colors"
+                disabled={bankAccounts.length === 0}
+                className="flex-1 bg-brand-green text-white py-3 rounded-lg font-semibold hover:bg-brand-green/90 transition-colors disabled:opacity-50"
               >
                 Continue
               </button>
@@ -274,6 +370,7 @@ export default function WithdrawalPage() {
 
   // Step 3: Confirm
   if (currentStep === "confirm") {
+    const selectedBank = bankAccounts.find(b => b.id === selectedAccount);
     return (
       <div className="min-h-screen bg-[#F8FAFC] p-4 sm:p-6 md:p-8 flex items-center justify-center">
         <Card className="w-full max-w-md">
@@ -288,7 +385,7 @@ export default function WithdrawalPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-600">Bank Account</span>
-                <span className="font-semibold text-slate-900">Chase •••• 6789</span>
+                <span className="font-semibold text-slate-900">{selectedBank?.name} •••• {selectedBank?.last4}</span>
               </div>
               <div className="border-t border-slate-300 pt-4 flex justify-between items-center">
                 <span className="font-semibold text-slate-900">New Balance</span>
@@ -301,18 +398,28 @@ export default function WithdrawalPage() {
               </p>
             </div>
 
+            {error && (
+              <p className="text-sm text-red-600 mb-4 flex items-center gap-1">
+                <AlertCircle className="w-4 h-4" />
+                {error}
+              </p>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={() => setCurrentStep("account")}
-                className="flex-1 py-3 border border-slate-300 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 transition-colors"
+                disabled={isProcessing}
+                className="flex-1 py-3 border border-slate-300 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
                 Back
               </button>
               <button
                 onClick={handleNext}
-                className="flex-1 bg-brand-green text-white py-3 rounded-lg font-semibold hover:bg-brand-green/90 transition-colors"
+                disabled={isProcessing}
+                className="flex-1 bg-brand-green text-white py-3 rounded-lg font-semibold hover:bg-brand-green/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
               >
-                Confirm
+                {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isProcessing ? 'Processing' : 'Confirm'}
               </button>
             </div>
           </CardContent>
@@ -321,8 +428,10 @@ export default function WithdrawalPage() {
     )
   }
 
-  // Step 4: Processing
+  // Step 4: Processing 
   if (currentStep === "processing") {
+    // This state might be transient now as we await the API call in confirm step
+    // But we keep it if we want a dedicated view during longer waits
     return (
       <div className="min-h-screen bg-[#F8FAFC] p-4 sm:p-6 md:p-8 flex items-center justify-center">
         <Card className="w-full max-w-md">
@@ -340,6 +449,7 @@ export default function WithdrawalPage() {
 
   // Step 5: Success
   if (currentStep === "success") {
+    const selectedBank = bankAccounts.find(b => b.id === selectedAccount);
     return (
       <div className="min-h-screen bg-[#F8FAFC] p-4 sm:p-6 md:p-8 flex items-center justify-center">
         <Card className="w-full max-w-md">
@@ -358,17 +468,13 @@ export default function WithdrawalPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-600">Bank Account</span>
-                <span className="font-semibold text-slate-900">Chase •••• 6789</span>
+                <span className="font-semibold text-slate-900">{selectedBank?.name} •••• {selectedBank?.last4}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-600">Status</span>
-                <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded text-xs font-medium border border-amber-200">
-                  Pending
+                <span className="px-2 py-1 bg-amber-50 text-amber-900 rounded text-xs font-medium border border-amber-200">
+                  Processing
                 </span>
-              </div>
-              <div className="border-t border-slate-200 pt-4 flex justify-between items-center">
-                <span className="text-slate-600">Transaction ID</span>
-                <span className="text-sm font-mono text-slate-600">WTD-{Date.now()}</span>
               </div>
             </div>
 
@@ -390,3 +496,4 @@ export default function WithdrawalPage() {
 
   return null
 }
+

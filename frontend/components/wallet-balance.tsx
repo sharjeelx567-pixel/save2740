@@ -128,3 +128,4 @@ export function WalletBalance({ compact = false }: WalletBalanceProps) {
   )
 }
 
+

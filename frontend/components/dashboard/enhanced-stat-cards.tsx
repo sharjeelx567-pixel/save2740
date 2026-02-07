@@ -89,3 +89,4 @@ export function EnhancedStatCards({ totalSaved, goal, progress }: StatCardsProps
     </div>
   )
 }
+

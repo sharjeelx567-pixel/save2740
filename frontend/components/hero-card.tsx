@@ -24,7 +24,7 @@ export function HeroCard() {
   const remaining = Math.max(0, FINANCIAL.YEARLY_SAVINGS_GOAL - balance)
   const progress = Math.min(100, (balance / FINANCIAL.YEARLY_SAVINGS_GOAL) * 100)
   const dailyTarget = (remaining / 365).toFixed(2)
-  const dailyAmount = 27.40
+  const dailyAmount = FINANCIAL.DAILY_SAVINGS_AMOUNT
 
   const handleAutoSave = async () => {
     setProcessingAutoSave(true)
@@ -226,3 +226,4 @@ export function HeroCard() {
     </div>
   )
 }
+

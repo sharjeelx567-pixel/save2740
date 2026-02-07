@@ -23,6 +23,7 @@ import {
   Clock,
   Shield,
 } from 'lucide-react'
+import { WalletService } from '@/lib/wallet-service'
 
 interface EscrowTransaction {
   id: string
@@ -54,18 +55,18 @@ export function EscrowBalance() {
       setError(null)
 
       try {
-        const response = await fetch('/api/wallet/escrow', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
-          },
-        })
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch escrow balance')
+        const response = await WalletService.getEscrowBalance()
+        if (response.success && response.data) {
+          const escrowData = response.data.data || response.data
+          setEscrow({
+            totalEscrow: escrowData.escrowBalance || 0,
+            currency: '$',
+            transactions: escrowData.transactions || [],
+            releaseDate: escrowData.releaseDate
+          })
+        } else {
+          throw new Error(response.error?.error || 'Failed to fetch escrow balance')
         }
-
-        const result = await response.json()
-        setEscrow(result)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to load escrow'
         setError(message)
@@ -303,3 +304,4 @@ export function EscrowBalance() {
     </div>
   )
 }
+

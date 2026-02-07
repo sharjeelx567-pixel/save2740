@@ -19,3 +19,4 @@ export function StripeProvider({ children }: StripeProviderProps) {
     </Elements>
   )
 }
+

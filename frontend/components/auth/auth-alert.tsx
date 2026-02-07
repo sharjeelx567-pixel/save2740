@@ -57,3 +57,4 @@ export const AuthAlert: React.FC<AuthAlertProps> = ({ type, message, title, onCl
     </div>
   );
 };
+

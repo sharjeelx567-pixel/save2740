@@ -1,12 +1,8 @@
 /**
- * Custom hook for transaction data management
- * Handles fetching, polling, and state management for wallet transactions
- * - Auto-polls transaction history at configurable intervals
- * - Refetches when window regains focus
- * - Handles network reconnection
+ * Custom hook for transaction data management using React Query
  */
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { WalletService } from "@/lib/wallet-service";
 import { Transaction, ApiErrorResponse } from "@/lib/types";
 
@@ -16,16 +12,11 @@ interface UseTransactionsOptions {
   endDate?: string;
   shouldFetch?: boolean;
   limit?: number;
-  pollInterval?: number; // milliseconds, default 15000 (15 seconds)
-  refetchOnFocus?: boolean; // default true
-  refetchOnOnline?: boolean; // default true
+  pollInterval?: number;
+  refetchOnFocus?: boolean;
+  refetchOnOnline?: boolean;
 }
 
-/**
- * useTransactions hook - Real-time transaction data with polling
- * @param options - Configuration options for fetching and polling transactions
- * @returns Object containing transactions, loading state, error, and refetch function
- */
 export function useTransactions(options: UseTransactionsOptions = {}) {
   const {
     type,
@@ -38,113 +29,52 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
     refetchOnOnline = true,
   } = options;
 
-  const [data, setData] = useState<Transaction[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<ApiErrorResponse | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const {
+    data,
+    isLoading: loading,
+    error: queryError,
+    refetch,
+    dataUpdatedAt
+  } = useQuery({
+    queryKey: ['transactions', { type, startDate, endDate, limit }],
+    queryFn: async () => {
+      const response = await WalletService.getTransactions(type, startDate, endDate);
 
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  /**
-   * Fetch transactions from API
-   */
-  const fetchTransactions = useCallback(async () => {
-    try {
-      abortControllerRef.current = new AbortController();
-      setError(null);
-
-      const response = await WalletService.getTransactions(
-        type,
-        startDate,
-        endDate
-      );
-
-      if (response.success && response.data?.data?.transactions) {
+      if (response.success) {
         // Handle nested extraction: apiClient wrapper -> backend extraction -> data property
-        const transactions = response.data.data.transactions.slice(0, limit);
-        setData(transactions);
-        setLastUpdated(new Date());
-      } else if (response.success && response.data?.transactions) {
-        // Fallback if structure is flat
-        const transactions = response.data.transactions.slice(0, limit);
-        setData(transactions);
-        setLastUpdated(new Date());
+        let transactions: Transaction[] = [];
+        if (response.data && 'data' in response.data && (response.data as any).data?.transactions) {
+          transactions = (response.data as any).data.transactions;
+        } else if (response.data?.transactions) {
+          transactions = response.data.transactions;
+        }
+        return transactions.slice(0, limit);
       } else {
-        setError(response.error || { error: "Unknown error" });
+        throw response.error || new Error("Failed to fetch transactions");
       }
-    } catch (err) {
-      if (err instanceof Error && err.name !== "AbortError") {
-        console.error("[useTransactions] Fetch error:", err);
-        setError({
-          error: "Failed to fetch transactions",
-          code: "FETCH_ERROR",
-        });
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [type, startDate, endDate, limit]);
+    },
+    enabled: shouldFetch,
+    refetchInterval: false, // PERFORMANCE: Don't auto-poll transactions
+    refetchOnWindowFocus: false, // PERFORMANCE: Manual refresh only
+    refetchOnReconnect: refetchOnOnline,
+    refetchOnMount: false, // PERFORMANCE: Use cached data
+    staleTime: 2 * 60 * 1000, // PERFORMANCE: 2 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache 10 minutes
+  });
 
-  /**
-   * Refetch transactions manually
-   */
-  const refetch = useCallback(() => {
-    setLoading(true);
-    fetchTransactions();
-  }, [fetchTransactions]);
-
-  // Initial fetch and polling setup
-  useEffect(() => {
-    if (!shouldFetch) return;
-
-    // Initial fetch
-    fetchTransactions();
-
-    // Setup polling interval
-    pollIntervalRef.current = setInterval(() => {
-      fetchTransactions();
-    }, pollInterval);
-
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-      abortControllerRef.current?.abort();
-    };
-  }, [shouldFetch, fetchTransactions, pollInterval]);
-
-  // Refetch on window focus
-  useEffect(() => {
-    if (!refetchOnFocus) return;
-
-    const handleFocus = () => {
-      refetch();
-    };
-
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [refetchOnFocus, refetch]);
-
-  // Refetch on network reconnect
-  useEffect(() => {
-    if (!refetchOnOnline) return;
-
-    const handleOnline = () => {
-      refetch();
-    };
-
-    window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
-  }, [refetchOnOnline, refetch]);
+  // Map React Query error to our ApiErrorResponse format
+  const error: ApiErrorResponse | null = queryError ? {
+    error: (queryError as any).message || 'Failed to fetch transactions',
+    code: (queryError as any).code || 'FETCH_ERROR'
+  } : null;
 
   return {
-    data,
+    data: data || null,
     loading,
     error,
     refetch,
-    lastUpdated,
-    isStale: lastUpdated ? Date.now() - lastUpdated.getTime() > pollInterval : true,
+    lastUpdated: dataUpdatedAt ? new Date(dataUpdatedAt) : null,
+    isStale: false,
     deposits: data?.filter((tx) => tx.type === "credit" || tx.type === "deposit") ?? [],
   };
 }

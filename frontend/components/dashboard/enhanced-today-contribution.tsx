@@ -108,3 +108,4 @@ export function EnhancedTodayContribution({ contributed, dailyGoal }: TodayContr
     </Card>
   )
 }
+

@@ -1,0 +1,540 @@
+{
+  "info": {
+    "name": "Save2740 API - Complete Collection",
+    "description": "Complete API collection for Save2740 platform including user and admin endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "save2740-api-v1",
+    "version": "1.0.0",
+    "updatedAt": "2026-01-26"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminAccessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "User Signup",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/api/auth/signup",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}"
+            }
+          }
+        },
+        {
+          "name": "User Login",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/api/auth/me"
+          }
+        },
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/api/admin/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@save2740.com\",\n  \"password\": \"AdminPassword123!\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User - Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Overview",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/api/dashboard/overview"
+          }
+        },
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/api/dashboard/stats"
+          }
+        }
+      ]
+    },
+    {
+      "name": "User - Wallet",
+      "item": [
+        {
+          "name": "Get Wallet",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/api/wallet"
+          }
+        },
+        {
+          "name": "Get Transactions",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/api/wallet/transactions"
+          }
+        },
+        {
+          "name": "Deposit Funds",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{baseUrl}}/api/wallet/deposit",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100.00,\n  \"method\": \"card\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Withdraw Funds",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{baseUrl}}/api/wallet/withdraw",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50.00,\n  \"method\": \"bank_transfer\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User - KYC",
+      "item": [
+        {
+          "name": "Get KYC Status",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/api/kyc/status"
+          }
+        },
+        {
+          "name": "Submit KYC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{baseUrl}}/api/kyc/submit",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentType\": \"passport\",\n  \"documentNumber\": \"AB123456\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": "{{baseUrl}}/api/admin/dashboard/stats"
+          }
+        },
+        {
+          "name": "Get Recent Activity",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": "{{baseUrl}}/api/admin/dashboard/activity"
+          }
+        },
+        {
+          "name": "Get System Alerts",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": "{{baseUrl}}/api/admin/dashboard/alerts"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - Users",
+      "item": [
+        {
+          "name": "List All Users",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "20"},
+                {"key": "search", "value": "", "disabled": true},
+                {"key": "status", "value": "", "disabled": true},
+                {"key": "kycStatus", "value": "", "disabled": true}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Details",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": "{{baseUrl}}/api/admin/users/{{userId}}"
+          }
+        },
+        {
+          "name": "Get User Stats",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": "{{baseUrl}}/api/admin/users/stats/overview"
+          }
+        },
+        {
+          "name": "Lock User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminAccessToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{baseUrl}}/api/admin/users/lock",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"reason\": \"Security concern\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Unlock User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminAccessToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{baseUrl}}/api/admin/users/unlock",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Suspend User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminAccessToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{baseUrl}}/api/admin/users/suspend",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"reason\": \"Terms violation\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Force Logout User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminAccessToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{baseUrl}}/api/admin/users/force-logout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - KYC",
+      "item": [
+        {
+          "name": "Get Pending KYC",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": "{{baseUrl}}/api/admin/kyc/pending"
+          }
+        },
+        {
+          "name": "Get User KYC",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": "{{baseUrl}}/api/admin/kyc/{{userId}}"
+          }
+        },
+        {
+          "name": "Approve KYC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminAccessToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{baseUrl}}/api/admin/kyc/approve",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"kycId\": \"<kycId>\",\n  \"notes\": \"Approved - all documents valid\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reject KYC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminAccessToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{baseUrl}}/api/admin/kyc/reject",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"kycId\": \"<kycId>\",\n  \"reason\": \"Document not clear\",\n  \"notes\": \"Please provide clearer images\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - Support Tickets",
+      "item": [
+        {
+          "name": "List Tickets",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/support-tickets?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "support-tickets"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "20"},
+                {"key": "status", "value": "", "disabled": true},
+                {"key": "priority", "value": "", "disabled": true}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Ticket Stats",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": "{{baseUrl}}/api/admin/support-tickets/stats"
+          }
+        },
+        {
+          "name": "Reply to Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminAccessToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{baseUrl}}/api/admin/support-tickets/:ticketId/reply",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Admin reply message\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - Audit Logs",
+      "item": [
+        {
+          "name": "List Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/audit-logs?page=1&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "audit-logs"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "50"},
+                {"key": "resourceType", "value": "", "disabled": true},
+                {"key": "severity", "value": "", "disabled": true}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Audit Log Stats",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": "{{baseUrl}}/api/admin/audit-logs/stats"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - System Config",
+      "item": [
+        {
+          "name": "List All Configs",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/system-config",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "system-config"],
+              "query": [
+                {"key": "category", "value": "", "disabled": true}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Config by Key",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": "{{baseUrl}}/api/admin/system-config/:key"
+          }
+        },
+        {
+          "name": "Update Config",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminAccessToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{baseUrl}}/api/admin/system-config/:key",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"new_value\",\n  \"description\": \"Updated description\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - Notifications",
+      "item": [
+        {
+          "name": "Send Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{adminAccessToken}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{baseUrl}}/api/admin/notifications/send",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetAudience\": \"all_users\",\n  \"title\": \"System Update\",\n  \"message\": \"New features available\",\n  \"type\": \"info\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Notification History",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/notifications/history?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "notifications", "history"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "20"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          }
+        },
+        {
+          "name": "API Documentation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/"
+          }
+        }
+      ]
+    }
+  ]
+}

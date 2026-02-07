@@ -6,52 +6,40 @@ import { useSupportChat } from '@/context/support-chat-context';
 
 export function SupportChatButton() {
     const { openChat, unreadCount } = useSupportChat();
+    // Check local storage directly for more robustness
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-    // Check if user is authenticated
     useEffect(() => {
         const checkAuth = () => {
-            if (typeof window === 'undefined') return false;
-            
-            const session = localStorage.getItem('session');
+            if (typeof window === 'undefined') return;
             const user = localStorage.getItem('user');
-            
-            if (session && user) {
-                try {
-                    const sessionData = JSON.parse(session);
-                    if (sessionData.expiresAt && new Date(sessionData.expiresAt) > new Date()) {
-                        setIsAuthenticated(true);
-                        return;
-                    }
-                } catch (e) {
-                    // Invalid session
-                }
+
+            // Just check if user exists. Session token might be handled differently, 
+            // but if 'user' is there, we assume logged in for UI purposes.
+            if (user) {
+                setIsAuthenticated(true);
+            } else {
+                setIsAuthenticated(false);
             }
-            setIsAuthenticated(false);
         };
 
         checkAuth();
         // Check periodically
-        const interval = setInterval(checkAuth, 5000);
+        const interval = setInterval(checkAuth, 1000); // Check faster
         return () => clearInterval(interval);
     }, []);
-
-    // Don't show button if not authenticated
-    if (!isAuthenticated) {
-        return null;
-    }
 
     return (
         <button
             onClick={openChat}
-            className="fixed bottom-6 right-6 z-50 bg-brand-green hover:bg-emerald-600 text-white rounded-full p-4 shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 group"
+            className="fixed bottom-6 right-6 z-[9999] bg-brand-green hover:bg-emerald-600 text-white rounded-full p-4 shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 group"
             aria-label="Open support chat"
         >
             {/* Pulse animation ring */}
             <div className="absolute inset-0 rounded-full bg-brand-green opacity-75 animate-ping-slow"></div>
 
             {/* Icon */}
-            <MessageCircle className="w-6 h-6 relative z-10" />
+            <MessageCircle className="w-6 h-6 relative z-10 text-white" />
 
             {/* Unread badge */}
             {unreadCount > 0 && (
@@ -68,3 +56,4 @@ export function SupportChatButton() {
         </button>
     );
 }
+

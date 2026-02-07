@@ -19,22 +19,13 @@ function Save2740PageContent() {
     const fetchPlans = async () => {
       try {
         setError(null);
-        const response = await fetch('/api/save2740', {
-          headers: {
-            Authorization: `Bearer ${process.env.NEXT_PUBLIC_AUTH_TOKEN}`,
-          },
-        });
+        const { apiClient } = await import('@/lib/api-client');
+        const response = await apiClient.get<Save2740Plan[]>('/api/save2740');
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch plans');
-        }
-
-        const data = await response.json();
-
-        if (data.success) {
-          setPlans(data.data);
+        if (response.success && response.data) {
+          setPlans(response.data);
         } else {
-          setError(data.error || 'Failed to fetch plans');
+          setError(response.error?.error || 'Failed to fetch plans');
         }
       } catch (err: any) {
         setError(err.message || 'Failed to fetch plans');
@@ -202,7 +193,7 @@ function Save2740PageContent() {
                       <div className="bg-green-50 p-2 rounded">
                         <p className="text-gray-600">Daily Savings</p>
                         <p className="font-bold text-gray-900">
-                          ${plan.savingsMode === 'daily' && plan.dailyAmount ? (plan.dailyAmount / 100).toFixed(2) : '$0.00'}
+                          ${plan.savingsMode === 'daily' && plan.dailyAmount ? plan.dailyAmount.toFixed(2) : plan.weeklyAmount ? plan.weeklyAmount.toFixed(2) : '$0.00'}
                         </p>
                       </div>
                       <div className="bg-green-50 p-2 rounded">
@@ -239,3 +230,4 @@ export default function Save2740HomePage() {
     </ProtectedPage>
   );
 }
+

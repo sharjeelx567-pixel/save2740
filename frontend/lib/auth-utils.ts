@@ -51,3 +51,4 @@ export const maskEmail = (email: string): string => {
   const masked = localPart.slice(0, 2) + "*".repeat(Math.max(0, localPart.length - 2));
   return `${masked}@${domain}`;
 };
+

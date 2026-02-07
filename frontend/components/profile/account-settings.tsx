@@ -6,9 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Bell, Mail, MessageSquare, Shield, Globe, Loader2 } from "lucide-react";
+import { Bell, Mail, MessageSquare, Shield, Loader2 } from "lucide-react";
 import { API } from "@/lib/constants";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Laptop, Smartphone } from "lucide-react";
 
 export function AccountSettings() {
     const { profile, refetch } = useProfile();
@@ -25,6 +27,24 @@ export function AccountSettings() {
         language: "English",
         currency: "USD"
     });
+
+    const [showSessions, setShowSessions] = useState(false);
+    const [sessions, setSessions] = useState<any[]>([]);
+
+    const fetchSessions = async () => {
+        try {
+            const response = await fetch(`${API.BASE_URL}/api/profile/sessions`, {
+                headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                setSessions(data.data);
+                setShowSessions(true);
+            }
+        } catch (error) {
+            console.error("Failed to fetch sessions", error);
+        }
+    };
 
     useEffect(() => {
         if (profile?.preferences) {
@@ -94,14 +114,6 @@ export function AccountSettings() {
         const newSettings = { ...settings, [key]: !settings[key] };
         setSettings(newSettings);
         saveSettings(newSettings); // Auto-save on toggle
-    };
-
-    const handleChange = (key: string, value: string) => {
-        setSettings(prev => ({ ...prev, [key]: value }));
-    };
-
-    const handleSavePreferences = () => {
-        saveSettings(settings); // Explicit save for dropdowns
     };
 
     return (
@@ -204,23 +216,7 @@ export function AccountSettings() {
                     <CardDescription className="text-sm">Enhance your account security</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
-                    <div className="flex flex-row items-center justify-between gap-2 p-2.5 sm:p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-                        <div className="flex items-start sm:items-center gap-3 flex-1">
-                            <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-brand-green mt-0.5 sm:mt-0 shrink-0" />
-                            <div className="flex-1 min-w-0">
-                                <Label htmlFor="2fa" className="text-sm sm:text-base font-medium cursor-pointer block">Two-Factor Authentication</Label>
-                                <p className="text-xs sm:text-sm text-gray-600">Add an extra layer of security</p>
-                            </div>
-                        </div>
-                        <Switch
-                            id="2fa"
-                            checked={settings.twoFactorAuth}
-                            onCheckedChange={() => handleToggle("twoFactorAuth")}
-                            disabled={true} // Disabled for now as it requires complex backend implementation
-                            className="shrink-0 scale-75 sm:scale-100 origin-right data-[state=checked]:bg-brand-green"
-                        />
-                        {/* <Badge>Coming Soon</Badge> would be nice here */}
-                    </div>
+
 
                     <div className="flex flex-row items-center justify-between gap-2 p-2.5 sm:p-4 bg-gray-50 rounded-xl">
                         <div className="flex items-start sm:items-center gap-3 flex-1">
@@ -239,60 +235,53 @@ export function AccountSettings() {
                         />
                     </div>
 
-                    <Button variant="outline" className="w-full sm:w-auto border-gray-300 text-sm sm:text-base">
+                    <Button
+                        variant="outline"
+                        className="w-full sm:w-auto border-gray-300 text-sm sm:text-base"
+                        onClick={fetchSessions}
+                    >
                         View Active Sessions
                     </Button>
                 </CardContent>
             </Card>
 
-            {/* Preferences */}
-            <Card className="border-0 bg-white rounded-2xl sm:rounded-3xl shadow-lg">
-                <CardHeader className="px-4 sm:px-6">
-                    <CardTitle className="text-lg sm:text-2xl font-bold flex items-center gap-2">
-                        <Globe className="w-5 h-5 sm:w-6 sm:h-6 text-brand-green" />
-                        Preferences
-                    </CardTitle>
-                    <CardDescription className="text-sm">Customize your experience</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
-                    <div className="space-y-2">
-                        <Label>Language</Label>
-                        <select
-                            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 bg-white"
-                            value={settings.language}
-                            onChange={(e) => handleChange("language", e.target.value)}
-                        >
-                            <option value="English">English</option>
-                            <option value="Spanish">Spanish</option>
-                            <option value="French">French</option>
-                        </select>
-                    </div>
 
-                    <div className="space-y-2">
-                        <Label>Currency</Label>
-                        <select
-                            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 bg-white"
-                            value={settings.currency}
-                            onChange={(e) => handleChange("currency", e.target.value)}
-                        >
-                            <option value="USD">USD ($)</option>
-                            <option value="EUR">EUR (€)</option>
-                            <option value="GBP">GBP (£)</option>
-                        </select>
+            <Dialog open={showSessions} onOpenChange={setShowSessions}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Active Sessions</DialogTitle>
+                        <DialogDescription>
+                            Devices currently logged into your account
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-2 max-h-[60vh] overflow-y-auto">
+                        {sessions.length > 0 ? (
+                            sessions.map((session: any) => (
+                                <div key={session.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                    <div className="p-2 bg-white rounded-full border border-slate-200">
+                                        {session.userAgent?.toLowerCase().includes('mobile') ? (
+                                            <Smartphone className="w-4 h-4 text-slate-500" />
+                                        ) : (
+                                            <Laptop className="w-4 h-4 text-slate-500" />
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-sm text-slate-900">
+                                            {session.userAgent}
+                                        </p>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            {new Date(session.lastActive).toLocaleString()} • {session.ipAddress}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-center text-slate-500 py-4">No active sessions found.</p>
+                        )}
                     </div>
-
-                    <div className="pt-4">
-                        <Button
-                            className="w-full md:w-auto bg-brand-green hover:bg-brand-green/90"
-                            onClick={handleSavePreferences}
-                            disabled={loading}
-                        >
-                            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                            Save Preferences
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
+

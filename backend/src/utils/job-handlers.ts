@@ -17,12 +17,11 @@ async function handleEmailJob(data: {
     text?: string;
 }): Promise<void> {
     try {
-        await sendEmail({
-            to: data.to,
-            subject: data.subject,
-            html: data.html,
-            text: data.text
-        });
+        await sendEmail(
+            data.to,
+            data.subject,
+            data.text || data.html || ''
+        );
         console.log(`✅ Email sent to ${data.to}`);
     } catch (error) {
         console.error('Email job error:', error);
@@ -38,6 +37,7 @@ async function handleNotificationJob(data: {
     title: string;
     message: string;
     type?: string;
+    data?: any;
 }): Promise<void> {
     try {
         // Get Notification model

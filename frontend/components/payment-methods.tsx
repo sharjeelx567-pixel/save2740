@@ -222,3 +222,4 @@ export function PaymentMethods() {
     </div>
   )
 }
+

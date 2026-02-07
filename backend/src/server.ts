@@ -59,6 +59,15 @@ async function startServer() {
             console.warn('⚠️  Failed to start job queue:', error);
         }
 
+        // Initialize cron jobs for scheduled tasks
+        try {
+            const { initializeCronJobs } = await import('./utils/cron-scheduler');
+            initializeCronJobs();
+            console.log('✅ Cron jobs initialized');
+        } catch (error) {
+            console.warn('⚠️  Failed to initialize cron jobs:', error);
+        }
+
         // Start server
         app.listen(Number(PORT), '0.0.0.0', () => {
             console.log(`🚀 Server is running on port ${PORT}`);
@@ -77,6 +86,14 @@ startServer();
 process.on('SIGTERM', async () => {
     console.log('SIGTERM signal received: closing HTTP server');
 
+    // Stop cron jobs
+    try {
+        const { stopAllCronJobs } = await import('./utils/cron-scheduler');
+        stopAllCronJobs();
+    } catch (error) {
+        // Ignore if not initialized
+    }
+
     // Stop job queue
     try {
         const { jobQueue } = await import('./utils/job-queue');
@@ -91,6 +108,14 @@ process.on('SIGTERM', async () => {
 
 process.on('SIGINT', async () => {
     console.log('SIGINT signal received: closing HTTP server');
+
+    // Stop cron jobs
+    try {
+        const { stopAllCronJobs } = await import('./utils/cron-scheduler');
+        stopAllCronJobs();
+    } catch (error) {
+        // Ignore if not initialized
+    }
 
     // Stop job queue
     try {

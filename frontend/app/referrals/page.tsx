@@ -16,9 +16,11 @@ function ReferralsPageContent() {
   const { referralLink, friendsInvited, totalEarnings, loading, error, refetch } = useReferrals()
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(referralLink)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    if (referralLink && referralLink !== '') {
+      navigator.clipboard.writeText(referralLink)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
   }
 
   return (
@@ -123,3 +125,4 @@ export default function ReferralsPage() {
     </ProtectedPage>
   )
 }
+

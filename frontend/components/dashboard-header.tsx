@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Bell, Menu } from "lucide-react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { API } from "@/lib/constants"
+import { useNotifications } from "@/hooks/use-notifications"
 
 interface DashboardHeaderProps {
   title?: string
@@ -22,34 +22,31 @@ interface Notification {
 
 export function DashboardHeader({ title = "Dashboard", onMenuClick, showMobileTitle = true }: DashboardHeaderProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [loading, setLoading] = useState(true)
+  const { notifications, unreadCount, markAllAsRead } = useNotifications()
 
+  const playNotificationSound = () => {
+    try {
+      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
+      audio.volume = 0.5;
+      audio.play().catch(e => console.error("Audio play failed", e));
+    } catch (error) {
+      console.error("Error playing sound:", error);
+    }
+  };
+
+  // Listen for custom notification events
   useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API.BASE_URL}/api/notifications`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        if (response.ok) {
-          const data = await response.json()
-          setNotifications(data.data.notifications || [])
-        }
-      } catch (error) {
-        console.error('Error fetching notifications:', error)
-      } finally {
-        setLoading(false)
-      }
+    const handleNotificationEvent = (event: any) => {
+      console.log('[Dashboard] Playing notification sound from event');
+      playNotificationSound();
     }
 
-    fetchNotifications()
-  }, [])
+    window.addEventListener('app:play-notification', handleNotificationEvent)
 
-  const unreadCount = notifications.filter(n => !n.read).length
+    return () => {
+      window.removeEventListener('app:play-notification', handleNotificationEvent)
+    }
+  }, [])
 
   return (
     <>
@@ -119,6 +116,19 @@ export function DashboardHeader({ title = "Dashboard", onMenuClick, showMobileTi
                 {notifications.map((notification) => (
                   <div
                     key={notification._id}
+                    onClick={() => {
+                      if (notification.type === 'support_reply' || notification.type === 'chat_message') {
+                        setNotificationsOpen(false); // Close sheet
+                        // Dispatch event to open chat widget
+                        const event = new CustomEvent('open-chat', {
+                          detail: {
+                            message: notification.message,
+                            timestamp: notification.createdAt
+                          }
+                        });
+                        window.dispatchEvent(event);
+                      }
+                    }}
                     className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer ${!notification.read ? 'bg-emerald-50/50' : ''
                       }`}
                   >
@@ -126,10 +136,10 @@ export function DashboardHeader({ title = "Dashboard", onMenuClick, showMobileTi
                       <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${!notification.read ? 'bg-brand-green' : 'bg-slate-300'
                         }`} />
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-slate-800 text-sm mb-1">
+                        <h4 className="font-semibold text-slate-800 text-sm mb-1 break-words">
                           {notification.title}
                         </h4>
-                        <p className="text-sm text-slate-600">
+                        <p className="text-sm text-slate-600 break-all">
                           {notification.message}
                         </p>
                         <p className="text-xs text-slate-400 mt-2">
@@ -155,3 +165,4 @@ export function DashboardHeader({ title = "Dashboard", onMenuClick, showMobileTi
     </>
   )
 }
+

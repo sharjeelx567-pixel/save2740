@@ -1,12 +1,6 @@
-/**
- * useProfile Hook
- * Fetches and manages user profile data with real-time updates
- */
-
-'use client'
-
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { API } from '@/lib/constants'
+import { useEffect } from 'react'
 
 export interface ProfileData {
   userId: string
@@ -14,6 +8,8 @@ export interface ProfileData {
   lastName: string
   email: string
   phoneNumber?: string
+  phone?: string // Alternative field name from backend
+  phoneVerified?: boolean
   emailVerified: boolean
   dateOfBirth?: string
   address?: {
@@ -51,106 +47,68 @@ interface UseProfileReturn {
   refetch: () => Promise<void>
 }
 
-/**
- * Hook to fetch and manage user profile with auto-refresh
- * Refetches every 30 seconds and on window focus
- */
 export function useProfile(): UseProfileReturn {
-  const [profile, setProfile] = useState<ProfileData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-  const abortControllerRef = useRef<AbortController | null>(null)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
-
-  const fetchProfile = useCallback(async () => {
-    // Cancel previous request if still pending
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
+  const queryClient = useQueryClient()
+  
+  // Get current token to include in query key (so cache invalidates on token change)
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  
+  // Invalidate profile cache when token changes
+  useEffect(() => {
+    if (!token) {
+      // Clear profile cache when logged out
+      queryClient.removeQueries({ queryKey: ['profile'] })
     }
+  }, [token, queryClient])
 
-    abortControllerRef.current = new AbortController()
+  const { data, isLoading, error, refetch } = useQuery({
+    // Include token hash in query key so cache invalidates on user change
+    queryKey: ['profile', token ? token.slice(-10) : 'none'],
+    queryFn: async () => {
+      const currentToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!currentToken) return null;
 
-    try {
       const response = await fetch(`${API.BASE_URL}/api/profile`, {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+          'Authorization': `Bearer ${currentToken}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
         },
-        signal: abortControllerRef.current.signal,
-      })
+        cache: 'no-store',
+      });
 
       if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/auth/login';
-        return;
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('session');
+          localStorage.removeItem('userId');
+          window.location.href = '/auth/login';
+        }
+        throw new Error('Unauthorized');
       }
 
       if (!response.ok) {
-        throw new Error('Failed to fetch profile')
+        throw new Error('Failed to fetch profile');
       }
 
-      const { data } = await response.json()
-      setProfile(data)
-      setError(null)
-    } catch (err) {
-      // Don't set error if request was aborted
-      if (err instanceof Error && err.name !== 'AbortError') {
-        setError(err)
-        console.error('Error fetching profile:', err)
-      }
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // Initial fetch on mount
-  useEffect(() => {
-    fetchProfile()
-  }, [fetchProfile])
-
-  // Set up polling interval
-  useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      fetchProfile()
-    }, 30 * 1000) // 30 seconds
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-    }
-  }, [fetchProfile])
-
-  // Refetch on window focus
-  useEffect(() => {
-    const handleFocus = () => {
-      fetchProfile()
-    }
-
-    window.addEventListener('focus', handleFocus)
-
-    return () => {
-      window.removeEventListener('focus', handleFocus)
-    }
-  }, [fetchProfile])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
-      }
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-    }
-  }, [])
+      const resData = await response.json();
+      return resData.data as ProfileData;
+    },
+    enabled: typeof window !== 'undefined' && !!token,
+    staleTime: 2 * 60 * 1000, // 2 minutes - shorter to ensure fresh data
+    gcTime: 5 * 60 * 1000, // 5 minutes garbage collection
+    refetchInterval: false, // Don't auto-refetch, only on demand
+    refetchOnWindowFocus: false, // Don't refetch on every window focus
+    refetchOnMount: true, // DO refetch on mount to get fresh data
+    retry: 1,
+  });
 
   return {
-    profile,
-    loading,
-    error,
-    refetch: fetchProfile,
+    profile: data || null,
+    loading: isLoading,
+    error: error as Error | null,
+    refetch: async () => { await refetch(); },
   }
 }

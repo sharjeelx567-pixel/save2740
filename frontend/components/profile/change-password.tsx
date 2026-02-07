@@ -47,8 +47,8 @@ export function ChangePassword() {
         setLoading(true);
 
         try {
-            const response = await fetch(`${API.BASE_URL}/api/auth/change-password`, {
-                method: "POST",
+            const response = await fetch(`${API.BASE_URL}/api/profile/password`, {
+                method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${localStorage.getItem('token') || ''}`
@@ -229,3 +229,4 @@ export function ChangePassword() {
         </div>
     );
 }
+

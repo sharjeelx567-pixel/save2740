@@ -120,3 +120,4 @@ export function isStrongPassword(password: string): { valid: boolean; errors: st
 export function generateRandomToken(): string {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
+

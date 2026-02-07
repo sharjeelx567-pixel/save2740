@@ -1,289 +1,136 @@
-import nodemailer from "nodemailer"
+import nodemailer from 'nodemailer';
 
-// Initialize transporter with Gmail configuration
-const getTransporter = () => {
-  const emailUser = process.env.SMTP_USER || process.env.EMAIL_USER;
-  const emailPass = process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD;
-  const smtpHost = process.env.SMTP_HOST;
+/**
+ * Real Email Service using Nodemailer
+ */
 
-  // Detect Gmail: if EMAIL_SERVICE is gmail, or SMTP_HOST contains gmail, or no SMTP_HOST set
-  const isGmail =
-    process.env.EMAIL_SERVICE === 'gmail' ||
-    smtpHost?.toLowerCase().includes('gmail') ||
-    emailUser?.toLowerCase().endsWith('@gmail.com') ||
-    !smtpHost;
+// Create transporter lazily to ensure env vars are loaded
+let _transporter: nodemailer.Transporter | null = null;
 
-  // If using Gmail, use Gmail service (recommended for Gmail)
-  if (isGmail) {
-    return nodemailer.createTransport({
-      service: 'gmail',
+function getTransporter(): nodemailer.Transporter {
+  if (!_transporter) {
+    _transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: false, // true for 465, false for other ports
       auth: {
-        user: emailUser,
-        pass: emailPass,
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD, // Use App Password for Gmail
       },
     });
+    console.log('📧 Email transporter initialized with:', process.env.SMTP_USER);
   }
-
-  // Custom SMTP configuration for other providers
-  return nodemailer.createTransport({
-    host: smtpHost,
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    secure: process.env.SMTP_PORT === "465",
-    auth: {
-      user: emailUser,
-      pass: emailPass,
-    },
-  });
-};
-
-const transporter = getTransporter();
-
-/**
- * Get the correct "from" email address
- * For Gmail accounts, must use the authenticated email (SMTP_USER)
- */
-function getFromEmail(): string {
-  const emailUser = process.env.SMTP_USER || process.env.EMAIL_USER;
-  const smtpFrom = process.env.SMTP_FROM;
-  const isGmailAccount = emailUser?.toLowerCase().endsWith('@gmail.com');
-
-  // If using Gmail and SMTP_FROM is not a Gmail address, use the Gmail account
-  if (isGmailAccount && smtpFrom && !smtpFrom.toLowerCase().endsWith('@gmail.com')) {
-    return emailUser!;
-  }
-
-  // Otherwise use SMTP_FROM if set, or fall back to emailUser
-  return smtpFrom || emailUser || "noreply@save2740.com";
+  return _transporter;
 }
 
-/**
- * Send verification code via email
- */
-export async function sendVerificationEmail(
-  email: string,
-  code: string
-): Promise<boolean> {
+export async function sendEmail(to: string, subject: string, text: string, html?: string): Promise<void> {
+  // Check if SMTP is configured
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+    console.warn('⚠️ SMTP not configured. Falling back to mock email.');
+    console.log(`
+      📧 [MOCK EMAIL SENT]
+      To: ${to}
+      Subject: ${subject}
+      Body:
+      ${text}
+      -----------------------
+    `);
+    return Promise.resolve();
+  }
+
   try {
-    const emailUser = process.env.SMTP_USER || process.env.EMAIL_USER;
-    const emailPass = process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD;
+    const transporter = getTransporter();
+    const info = await transporter.sendMail({
+      from: `"${process.env.SMTP_FROM_NAME || 'Save2740'}" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`, // sender address
+      to, // list of receivers
+      subject, // Subject line
+      text, // plain text body
+      html: html || text.replace(/\n/g, '<br>'), // html body
+    });
 
-    if (!emailUser || !emailPass) {
-      console.warn("[EMAIL] SMTP credentials not configured. Skipping email send.")
-      return false
-    }
-
-    const mailOptions = {
-      from: getFromEmail(),
-      to: email,
-      subject: "Save2740 - Email Verification Code",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #1f2937;">Email Verification</h2>
-          <p style="color: #4b5563;">Thank you for signing up with Save2740!</p>
-          <p style="color: #4b5563;">Your verification code is:</p>
-          <h1 style="color: #10b981; letter-spacing: 5px; font-size: 36px; font-weight: bold;">${code}</h1>
-          <p style="color: #6b7280; font-size: 14px;">This code will expire in 24 hours.</p>
-          <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">If you didn't sign up for Save2740, please ignore this email.</p>
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
-          <p style="color: #9ca3af; font-size: 12px;">
-            Save2740 Team | © 2026 All rights reserved
-          </p>
-        </div>
-      `,
-      text: `Your Save2740 verification code is: ${code}\n\nThis code will expire in 24 hours.`,
-    }
-
-    const result = await transporter.sendMail(mailOptions)
-    return true
+    console.log(`✅ Email sent to ${to}: ${info.messageId}`);
   } catch (error) {
-    console.error(`[EMAIL] Failed to send verification email to ${email}:`, error)
-    return false
+    console.error('❌ Error sending email to', to, ':', error);
+    // Rethrow so the caller knows it failed
+    throw error;
   }
 }
 
-/**
- * Send welcome email after successful verification
- */
-export async function sendWelcomeEmail(
-  email: string,
-  firstName: string
-): Promise<boolean> {
-  try {
-    const emailUser = process.env.SMTP_USER || process.env.EMAIL_USER;
-    const emailPass = process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD;
-
-    if (!emailUser || !emailPass) {
-      console.warn("[EMAIL] SMTP credentials not configured. Skipping email send.")
-      return false
-    }
-
-    const mailOptions = {
-      from: getFromEmail(),
-      to: email,
-      subject: "Welcome to Save2740!",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #1f2937;">Welcome to Save2740, ${firstName}!</h2>
-          <p style="color: #4b5563;">Your email has been successfully verified.</p>
-          <p style="color: #4b5563;">You can now access all features of Save2740:</p>
-          <ul style="line-height: 1.8; color: #4b5563;">
-            <li>Create and manage savings goals</li>
-            <li>Track your progress</li>
-            <li>Get personalized insights</li>
-            <li>Join our community</li>
-          </ul>
-          <p style="margin-top: 20px;">
-            <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-              Get Started
-            </a>
-          </p>
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
-          <p style="color: #9ca3af; font-size: 12px;">
-            Save2740 Team | © 2026 All rights reserved
-          </p>
+export async function sendVerificationEmail(email: string, token: string): Promise<void> {
+  const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${token}`;
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Verify Your Email - Save2740</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+      <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">Save2740</h1>
+        <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0;">Your Daily Savings Journey</p>
+      </div>
+      <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <h2 style="color: #333; margin-top: 0;">Verify Your Email Address</h2>
+        <p style="color: #666; line-height: 1.6;">Welcome to Save2740! Please verify your email address to get started on your savings journey.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${verificationLink}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Verify My Email</a>
         </div>
-      `,
-      text: `Welcome to Save2740, ${firstName}! Your email has been verified successfully. Start saving today!`,
-    }
+        <p style="color: #999; font-size: 14px;">Or copy this link into your browser:</p>
+        <p style="color: #10b981; word-break: break-all; font-size: 14px;">${verificationLink}</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="color: #999; font-size: 12px; margin: 0;">This link expires in 24 hours. If you didn't create a Save2740 account, please ignore this email.</p>
+      </div>
+      <p style="color: #999; font-size: 12px; text-align: center; margin-top: 20px;">© ${new Date().getFullYear()} Save2740. All rights reserved.</p>
+    </body>
+    </html>
+  `;
 
-    const result = await transporter.sendMail(mailOptions)
-    return true
-  } catch (error) {
-    console.error(`[EMAIL] Failed to send welcome email to ${email}:`, error)
-    return false
-  }
+  await sendEmail(
+    email,
+    'Verify Your Email - Save2740',
+    `Welcome to Save2740! Please verify your email by clicking this link: ${verificationLink}\n\nThis link expires in 24 hours.\n\nIf you didn't create a Save2740 account, please ignore this email.`,
+    html
+  );
 }
 
-/**
- * Send password reset code via email
- */
-export async function sendPasswordResetEmail(
-  email: string,
-  code: string
-): Promise<boolean> {
-  try {
-    const emailUser = process.env.SMTP_USER || process.env.EMAIL_USER;
-    const emailPass = process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD;
-
-    if (!emailUser || !emailPass) {
-      console.warn("[EMAIL] SMTP credentials not configured. Skipping email send.")
-      return false
-    }
-
-    const mailOptions = {
-      from: getFromEmail(),
-      to: email,
-      subject: "Save2740 - Password Reset Code",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #1f2937;">Password Reset Request</h2>
-          <p style="color: #4b5563;">We received a request to reset your password.</p>
-          <p style="color: #4b5563;">Your password reset code is:</p>
-          <h1 style="color: #10b981; letter-spacing: 5px; font-size: 36px; font-weight: bold;">${code}</h1>
-          <p style="color: #6b7280; font-size: 14px;">This code will expire in 24 hours.</p>
-          <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">If you didn't request a password reset, please ignore this email and your password will remain unchanged.</p>
-          <p style="color: #ef4444; font-weight: bold; font-size: 14px; margin-top: 20px;">⚠️ Never share this code with anyone!</p>
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
-          <p style="color: #9ca3af; font-size: 12px;">
-            Save2740 Team | © 2026 All rights reserved
-          </p>
+export async function sendPasswordResetEmail(email: string, otp: string): Promise<void> {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Password Reset - Save2740</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+      <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">Save2740</h1>
+        <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0;">Password Reset Request</p>
+      </div>
+      <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <h2 style="color: #333; margin-top: 0;">Your Password Reset Code</h2>
+        <p style="color: #666; line-height: 1.6;">You requested to reset your password. Use the code below to complete the process:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <div style="display: inline-block; background: #f0fdf4; border: 2px dashed #10b981; padding: 20px 40px; border-radius: 10px;">
+            <span style="font-size: 36px; font-weight: bold; color: #10b981; letter-spacing: 8px;">${otp}</span>
+          </div>
         </div>
-      `,
-      text: `Your Save2740 password reset code is: ${code}\n\nThis code will expire in 24 hours.\n\nIf you didn't request a password reset, please ignore this email.`,
-    }
+        <p style="color: #666; text-align: center; font-size: 14px;">⏰ This code expires in <strong>15 minutes</strong></p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="color: #999; font-size: 12px; margin: 0;">If you didn't request a password reset, please ignore this email or contact support if you have concerns about your account security.</p>
+      </div>
+      <p style="color: #999; font-size: 12px; text-align: center; margin-top: 20px;">© ${new Date().getFullYear()} Save2740. All rights reserved.</p>
+    </body>
+    </html>
+  `;
 
-    const result = await transporter.sendMail(mailOptions)
-    return true
-  } catch (error) {
-    console.error(`[EMAIL] Failed to send password reset email to ${email}:`, error)
-    return false
-  }
-}
-
-/**
- * Send password reset OTP via email (same as above but different naming)
- */
-export async function sendPasswordResetOTP(
-  email: string,
-  otp: string
-): Promise<boolean> {
-  try {
-    const emailUser = process.env.SMTP_USER || process.env.EMAIL_USER;
-    const emailPass = process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD;
-
-    if (!emailUser || !emailPass) {
-      console.warn("[EMAIL] SMTP credentials not configured. Skipping email send.")
-      return false
-    }
-
-    const mailOptions = {
-      from: getFromEmail(),
-      to: email,
-      subject: "Save2740 - Password Reset OTP",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #1f2937;">Password Reset Request</h2>
-          <p style="color: #4b5563;">We received a request to reset your password.</p>
-          <p style="color: #4b5563;">Your one-time password (OTP) is:</p>
-          <h1 style="color: #064E3B; letter-spacing: 5px; font-size: 36px; font-weight: bold; text-align: center;">${otp}</h1>
-          <p style="color: #6b7280; font-size: 14px; text-align: center;">This OTP will expire in 15 minutes.</p>
-          <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">If you didn't request a password reset, please ignore this email and your password will remain unchanged.</p>
-          <p style="color: #ef4444; font-weight: bold; font-size: 14px; margin-top: 20px;">⚠️ Never share this OTP with anyone!</p>
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
-          <p style="color: #9ca3af; font-size: 12px;">
-            Save2740 Team | © 2026 All rights reserved
-          </p>
-        </div>
-      `,
-      text: `Your Save2740 password reset OTP is: ${otp}\n\nThis OTP will expire in 15 minutes.\n\nIf you didn't request a password reset, please ignore this email.`,
-    }
-
-    const result = await transporter.sendMail(mailOptions)
-    console.log(`[EMAIL] Password reset OTP sent successfully to ${email}`)
-    return true
-  } catch (error: any) {
-    // Don't fail the request if email sending fails - OTP is still generated
-    console.error(`[EMAIL] Failed to send password reset OTP to ${email}:`, error.message || error)
-
-    // Log helpful error message for Gmail
-    if (error.code === 'EAUTH' || error.responseCode === 535) {
-      console.error(`[EMAIL] Gmail authentication failed. Please check:`)
-      console.error(`  1. Use App Password (not regular password) if 2FA is enabled`)
-      console.error(`  2. Enable "Less secure app access" (deprecated) or use App Password`)
-      console.error(`  3. Verify SMTP_USER and SMTP_PASSWORD in .env.local`)
-      console.error(`  4. Generate App Password: https://myaccount.google.com/apppasswords`)
-    }
-
-    // Return true so the API doesn't fail - OTP is still generated and stored
-    return false
-  }
-}
-
-/**
- * Generic email send function
- */
-export async function sendEmail(options: {
-  to: string
-  subject: string
-  html: string
-  text?: string
-}): Promise<boolean> {
-  try {
-    const emailUser = process.env.SMTP_USER || process.env.EMAIL_USER;
-    const emailPass = process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD;
-
-    if (!emailUser || !emailPass) {
-      console.warn("[EMAIL] SMTP credentials not configured. Skipping email send.")
-      return false
-    }
-
-    const result = await transporter.sendMail({
-      from: (process.env.SMTP_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || "noreply@save2740.com"),
-      ...options,
-    })
-    return true
-  } catch (error) {
-    console.error(`[EMAIL] Failed to send email to ${options.to}:`, error)
-    return false
-  }
+  await sendEmail(
+    email,
+    'Password Reset Code - Save2740',
+    `Your Save2740 password reset code is: ${otp}\n\nThis code expires in 15 minutes.\n\nIf you did not request this, please ignore this email.`,
+    html
+  );
 }

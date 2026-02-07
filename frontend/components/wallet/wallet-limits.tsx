@@ -26,6 +26,7 @@ import {
   Zap,
   Info,
 } from 'lucide-react'
+import { WalletService } from '@/lib/wallet-service'
 
 const TIER_INFO = {
   unverified: {
@@ -58,9 +59,37 @@ export function WalletLimits() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
 
+  const [limits, setLimits] = useState<any>(null)
+  const [error, setError] = useState<string | null>(null)
+
   useEffect(() => {
-    setLoading(false)
-  }, [])
+    const fetchLimits = async () => {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const response = await WalletService.getLimits()
+        if (response.success && response.data) {
+          const limitsData = response.data.data || response.data
+          setLimits(limitsData)
+        } else {
+          throw new Error(response.error?.error || 'Failed to fetch limits')
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load limits'
+        setError(message)
+        toast({
+          title: 'Error',
+          description: message,
+          variant: 'destructive',
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchLimits()
+  }, [toast])
 
   if (loading) {
     return (
@@ -74,25 +103,28 @@ export function WalletLimits() {
     )
   }
 
-  const currentTier = TIER_INFO.verified
+  if (error && !loading) {
+    return (
+      <Card className="border-red-200 bg-red-50">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <div>
+              <p className="font-semibold text-red-900">Failed to load limits</p>
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const dailyLimits = limits?.daily || {}
+  const monthlyLimits = limits?.monthly || {}
+  const singleTransaction = limits?.singleTransaction || {}
 
   return (
     <div className="space-y-6">
-      {/* Account Tier */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Account Status</CardTitle>
-              <CardDescription>Your current verification tier</CardDescription>
-            </div>
-            <Badge className="text-lg px-3 py-1 capitalize bg-green-100 text-brand-green">
-              verified
-            </Badge>
-          </div>
-        </CardHeader>
-      </Card>
-
       {/* Daily Limits */}
       <Card>
         <CardHeader>
@@ -100,21 +132,45 @@ export function WalletLimits() {
             <BarChart3 className="h-5 w-5" />
             Daily Limits
           </CardTitle>
-          <CardDescription>Your daily transaction limits</CardDescription>
+          <CardDescription>Your daily transaction limits and usage</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 border border-gray-200 rounded-lg">
-              <p className="text-sm text-gray-600">Deposit Limit</p>
+              <p className="text-sm text-gray-600 mb-1">Deposit Limit</p>
               <p className="text-2xl font-bold text-gray-900">
-                ${currentTier.dailyDeposit.toLocaleString()}
+                ${(dailyLimits.deposit?.limit || 0).toLocaleString()}
               </p>
+              {dailyLimits.deposit && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">Used:</span>
+                    <span className="font-medium">${(dailyLimits.deposit.used || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">Remaining:</span>
+                    <span className="font-medium text-emerald-600">${(dailyLimits.deposit.remaining || 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="p-4 border border-gray-200 rounded-lg">
-              <p className="text-sm text-gray-600">Withdrawal Limit</p>
+              <p className="text-sm text-gray-600 mb-1">Withdrawal Limit</p>
               <p className="text-2xl font-bold text-gray-900">
-                ${currentTier.dailyWithdrawal.toLocaleString()}
+                ${(dailyLimits.withdrawal?.limit || 0).toLocaleString()}
               </p>
+              {dailyLimits.withdrawal && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">Used:</span>
+                    <span className="font-medium">${(dailyLimits.withdrawal.used || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">Remaining:</span>
+                    <span className="font-medium text-emerald-600">${(dailyLimits.withdrawal.remaining || 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -127,21 +183,45 @@ export function WalletLimits() {
             <Calendar className="h-5 w-5" />
             Monthly Limits
           </CardTitle>
-          <CardDescription>Your monthly transaction limits</CardDescription>
+          <CardDescription>Your monthly transaction limits and usage</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 border border-gray-200 rounded-lg">
-              <p className="text-sm text-gray-600">Deposit Limit</p>
+              <p className="text-sm text-gray-600 mb-1">Deposit Limit</p>
               <p className="text-2xl font-bold text-gray-900">
-                ${currentTier.monthlyDeposit.toLocaleString()}
+                ${(monthlyLimits.deposit?.limit || 0).toLocaleString()}
               </p>
+              {monthlyLimits.deposit && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">Used:</span>
+                    <span className="font-medium">${(monthlyLimits.deposit.used || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">Remaining:</span>
+                    <span className="font-medium text-emerald-600">${(monthlyLimits.deposit.remaining || 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="p-4 border border-gray-200 rounded-lg">
-              <p className="text-sm text-gray-600">Withdrawal Limit</p>
+              <p className="text-sm text-gray-600 mb-1">Withdrawal Limit</p>
               <p className="text-2xl font-bold text-gray-900">
-                ${currentTier.monthlyWithdrawal.toLocaleString()}
+                ${(monthlyLimits.withdrawal?.limit || 0).toLocaleString()}
               </p>
+              {monthlyLimits.withdrawal && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">Used:</span>
+                    <span className="font-medium">${(monthlyLimits.withdrawal.used || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">Remaining:</span>
+                    <span className="font-medium text-emerald-600">${(monthlyLimits.withdrawal.remaining || 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -154,14 +234,34 @@ export function WalletLimits() {
             <Zap className="h-5 w-5" />
             Per-Transaction Limits
           </CardTitle>
-          <CardDescription>Maximum amount for a single transaction</CardDescription>
+          <CardDescription>Minimum and maximum amounts for single transactions</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="p-4 border border-gray-200 rounded-lg text-center">
-            <p className="text-sm text-gray-600 mb-2">Max Single Transaction</p>
-            <p className="text-3xl font-bold text-gray-900">
-              ${currentTier.singleTransaction.toLocaleString()}
-            </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 border border-gray-200 rounded-lg text-center">
+              <p className="text-sm text-gray-600 mb-2">Min Deposit</p>
+              <p className="text-2xl font-bold text-gray-900">
+                ${(singleTransaction.minDeposit || 0).toFixed(2)}
+              </p>
+            </div>
+            <div className="p-4 border border-gray-200 rounded-lg text-center">
+              <p className="text-sm text-gray-600 mb-2">Max Deposit</p>
+              <p className="text-2xl font-bold text-gray-900">
+                ${(singleTransaction.maxDeposit || 0).toLocaleString()}
+              </p>
+            </div>
+            <div className="p-4 border border-gray-200 rounded-lg text-center">
+              <p className="text-sm text-gray-600 mb-2">Min Withdrawal</p>
+              <p className="text-2xl font-bold text-gray-900">
+                ${(singleTransaction.minWithdrawal || 0).toFixed(2)}
+              </p>
+            </div>
+            <div className="p-4 border border-gray-200 rounded-lg text-center">
+              <p className="text-sm text-gray-600 mb-2">Max Withdrawal</p>
+              <p className="text-2xl font-bold text-gray-900">
+                ${(singleTransaction.maxWithdrawal || 0).toLocaleString()}
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -179,4 +279,5 @@ export function WalletLimits() {
     </div>
   )
 }
+
 

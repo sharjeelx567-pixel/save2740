@@ -26,33 +26,81 @@ export const authenticateToken = async (
         if (!token) {
             return res.status(401).json({
                 success: false,
-                error: 'Access token required',
-                code: 'TOKEN_REQUIRED'
+                code: 'AUTH_REQUIRED',
+                error: 'Authentication required'
             });
         }
 
         // Verify token
         const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email?: string; role?: string };
 
+        // First check Admin collection (for admin panel requests)
+        const { Admin } = await import('../modules/admin/auth/admin.model');
+        const admin = await Admin.findById(decoded.userId);
+
+        if (admin) {
+            // Found in Admin collection
+            if (!admin.isActive) {
+                return res.status(403).json({
+                    success: false,
+                    code: 'ACCOUNT_DEACTIVATED',
+                    error: 'Admin account is deactivated'
+                });
+            }
+
+            req.userId = decoded.userId;
+            req.user = { userId: decoded.userId, email: admin.email, role: admin.role };
+            return next();
+        }
+
+        // Fallback: Check User collection
+        const { User } = await import('../models/auth.model');
+        const user = await User.findById(decoded.userId);
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                code: 'AUTH_REQUIRED',
+                error: 'User not found'
+            });
+        }
+
+        // Check account status
+        if (user.accountStatus === 'suspended') {
+            return res.status(403).json({
+                success: false,
+                code: 'ACCOUNT_SUSPENDED',
+                error: 'Account is suspended. Contact support.'
+            });
+        }
+
+        if (user.accountStatus === 'locked' || (user.lockUntil && user.lockUntil > new Date())) {
+            return res.status(403).json({
+                success: false,
+                code: 'ACCOUNT_LOCKED',
+                error: 'Account is locked.'
+            });
+        }
+
         // Attach user ID to request
         req.userId = decoded.userId;
-        req.user = decoded;
+        req.user = { ...decoded, role: (user as any).role || 'user' };
 
         next();
     } catch (error) {
         if (error instanceof jwt.TokenExpiredError) {
             return res.status(401).json({
                 success: false,
-                error: 'Access token expired',
-                code: 'TOKEN_EXPIRED'
+                code: 'SESSION_EXPIRED',
+                message: 'Session expired. Please login again.'
             });
         }
 
         if (error instanceof jwt.JsonWebTokenError) {
             return res.status(401).json({
                 success: false,
-                error: 'Invalid access token',
-                code: 'TOKEN_INVALID'
+                code: 'AUTH_REQUIRED',
+                error: 'Invalid access token'
             });
         }
 
@@ -114,16 +162,58 @@ export const authenticateAdmin = async (
 
         const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email?: string; role?: string };
 
+        // First check Admin collection
+        const { Admin } = await import('../modules/admin/auth/admin.model');
+        const admin = await Admin.findById(decoded.userId);
+
+        if (admin) {
+            // Found in Admin collection
+            if (!admin.isActive) {
+                return res.status(403).json({
+                    success: false,
+                    code: 'ACCOUNT_DEACTIVATED',
+                    error: 'Admin account is deactivated'
+                });
+            }
+
+            req.userId = decoded.userId;
+            req.user = { userId: decoded.userId, email: admin.email, role: admin.role };
+            return next();
+        }
+
+        // Fallback: Check User collection for backward compatibility
+        const { User } = await import('../models/auth.model');
+        const user = await User.findById(decoded.userId);
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                code: 'AUTH_REQUIRED',
+                error: 'Admin not found'
+            });
+        }
+
         // Check if user is admin
-        if (decoded.role !== 'admin') {
+        const userRole = (user as any).role || 'user';
+        if (userRole !== 'admin' && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
             return res.status(403).json({
                 success: false,
+                code: 'FORBIDDEN',
                 error: 'Admin access required'
             });
         }
 
+        // Check account status
+        if (user.accountStatus === 'suspended' || user.accountStatus === 'locked') {
+            return res.status(403).json({
+                success: false,
+                code: user.accountStatus === 'suspended' ? 'ACCOUNT_SUSPENDED' : 'ACCOUNT_LOCKED',
+                error: `Account is ${user.accountStatus}.`
+            });
+        }
+
         req.userId = decoded.userId;
-        req.user = decoded;
+        req.user = { ...decoded, role: userRole };
 
         next();
     } catch (error) {

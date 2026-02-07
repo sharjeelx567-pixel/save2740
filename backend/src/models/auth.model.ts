@@ -14,6 +14,7 @@ export interface IUser extends Document {
   kycStatus?: 'pending' | 'approved' | 'rejected';
   referralCode?: string;
   referredBy?: string;
+  stripeCustomerId?: string;
   accountTier?: 'basic' | 'pro' | 'business';
   dateOfBirth?: Date;
   bio?: string;
@@ -31,7 +32,14 @@ export interface IUser extends Document {
       email: boolean;
       push: boolean;
       sms: boolean;
-    }
+    };
+    autoDebit?: {
+      enabled: boolean;
+      amount: number;
+      frequency: 'daily' | 'weekly' | 'monthly';
+      paymentMethodId?: string | null;
+      nextDebitDate?: Date;
+    };
   };
   biometricEnabled: boolean;
   biometricCredentials?: {
@@ -39,9 +47,17 @@ export interface IUser extends Document {
     publicKey: Buffer;
     counter: number;
   }[];
+  fcmToken?: string;
+  fcmTokens?: string[];
+  role: "user" | "admin";
   accountStatus: "active" | "suspended" | "locked";
   failedLoginAttempts: number;
   lastFailedLogin?: Date;
+  lockUntil?: Date;
+  verificationToken?: string;
+  verificationTokenExpires?: Date;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -102,6 +118,19 @@ const UserSchema = new Schema<IUser>(
         counter: Number,
       },
     ],
+    fcmToken: {
+      type: String,
+      sparse: true,
+    },
+    fcmTokens: {
+      type: [String],
+      default: [],
+    },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
     accountStatus: {
       type: String,
       enum: ["active", "suspended", "locked"],
@@ -112,6 +141,11 @@ const UserSchema = new Schema<IUser>(
       default: 0,
     },
     lastFailedLogin: Date,
+    lockUntil: Date,
+    verificationToken: String,
+    verificationTokenExpires: Date,
+    resetPasswordToken: String,
+    resetPasswordExpires: Date,
     lastLogin: Date,
     kycStatus: {
       type: String,
@@ -128,6 +162,11 @@ const UserSchema = new Schema<IUser>(
       type: String,
       sparse: true,
       trim: true,
+    },
+    stripeCustomerId: {
+      type: String,
+      sparse: true,
+      trim: true
     },
     accountTier: {
       type: String,
@@ -156,6 +195,13 @@ const UserSchema = new Schema<IUser>(
         sms: { type: Boolean, default: false },
         marketing: { type: Boolean, default: true },
         security: { type: Boolean, default: true }
+      },
+      autoDebit: {
+        enabled: { type: Boolean, default: false },
+        amount: { type: Number, default: 27.40 },
+        frequency: { type: String, enum: ['daily', 'weekly', 'monthly'], default: 'daily' },
+        paymentMethodId: { type: String, default: null },
+        nextDebitDate: { type: Date }
       }
     }
   },
@@ -249,6 +295,7 @@ export interface IEmailVerification extends Document {
   lastAttempt?: Date;
   verified: boolean;
   verifiedAt?: Date;
+  type?: string;
   createdAt: Date;
 }
 
@@ -287,6 +334,10 @@ const EmailVerificationSchema = new Schema<IEmailVerification>(
       default: false,
     },
     verifiedAt: Date,
+    type: {
+      type: String,
+      default: 'signup'
+    }
   },
   { timestamps: true }
 );
@@ -303,6 +354,7 @@ export interface IOTPVerification extends Document {
   lastAttempt?: Date;
   verified: boolean;
   verifiedAt?: Date;
+  type?: string;
   createdAt: Date;
 }
 
@@ -340,6 +392,10 @@ const OTPVerificationSchema = new Schema<IOTPVerification>(
       default: false,
     },
     verifiedAt: Date,
+    type: {
+      type: String,
+      default: 'login'
+    }
   },
   { timestamps: true }
 );
