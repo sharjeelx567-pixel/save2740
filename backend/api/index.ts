@@ -1,3 +1,5 @@
+import { Request, Response } from 'express';
+
 // Vercel Serverless Function - Enhanced Error Handling
 export const config = {
     api: {
