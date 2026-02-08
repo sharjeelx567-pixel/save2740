@@ -108,18 +108,23 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
             // Add timeout to prevent hanging if DB is slow/unresponsive
             const connectionPromise = connectDB();
             const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Database connection timeout')), 10000)
+                setTimeout(() => reject(new Error('Database connection timeout (25s)')), 25000)
             );
 
             await Promise.race([connectionPromise, timeoutPromise]);
         }
         next();
-    } catch (error) {
-        console.error('Database connection failed:', error);
+    } catch (error: any) {
+        console.error('Database connection failed:', error.message);
+        // Log masked URI for debugging
+        const uri = process.env.DATABASE_URL || process.env.MONGODB_URI || 'undefined';
+        console.error('DB URI Configured:', uri.startsWith('mongodb') ? 'YES' : 'NO');
+
         res.status(503).json({
             success: false,
-            error: 'Service temporarily unavailable. Please try again.',
-            code: 'DB_CONNECTION_ERROR'
+            error: 'Service temporarily unavailable (DB Connection).',
+            code: 'DB_CONNECTION_ERROR',
+            details: process.env.NODE_ENV === 'development' ? error.toString() : undefined
         });
     }
 });
