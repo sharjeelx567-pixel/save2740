@@ -135,14 +135,16 @@ app.use(hpp()); // Prevent HTTP Parameter Pollution
 app.use(cookieParser()); // Parse cookies
 
 // CORS configuration - UPDATED FOR VERCEL
+// CORS configuration - UPDATED FOR VERCEL
 const allowedOrigins = [
     process.env.FRONTEND_URL,
     process.env.ADMIN_PANEL_URL,
     'http://localhost:3000',
     'http://localhost:3001', // Admin panel
     'https://save-2740-frrontend.vercel.app',
-    'https://save-2740-frontend.vercel.app', // Adding possible correct spelling just in case
-].filter(Boolean);
+    'https://save-2740-frontend.vercel.app',
+    'https://save2740-ten.vercel.app', // Explicitly added user's frontend
+].filter(Boolean).map(origin => origin?.replace(/\/$/, '')); // User might add trailing slash in env, remove it
 
 app.use(cors({
     origin: function (origin, callback) {
@@ -154,12 +156,15 @@ app.use(cors({
             callback(null, true);
         } else {
             console.log('BLOCKED CORS:', origin); // Log blocked origins for debugging
+            // For debugging, temporarily allow ALL if production fails 
+            // callback(null, true); 
             callback(new Error('Not allowed by CORS'));
         }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'If-None-Match', 'If-Modified-Since', 'Idempotency-Key', 'X-Idempotency-Key']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'If-None-Match', 'If-Modified-Since', 'Idempotency-Key', 'X-Idempotency-Key', 'X-CSRF-Token'],
+    optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
 }));
 
 // Body parsing middleware
