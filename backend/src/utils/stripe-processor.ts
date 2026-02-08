@@ -393,30 +393,19 @@ export class StripePaymentProcessor implements IPaymentProcessor {
             // If a saved payment method is provided, use it
             if (options?.paymentMethodId) {
                 const pmId = options.paymentMethodId;
-                if (pmId.startsWith('pm_')) {
-                    createOptions.payment_method = pmId;
-
-                    // For modern us_bank_account, we NEED to specify it in types if trying to confirm on-session
-                    if (metadata?.transactionType === 'deposit' || metadata?.type === 'bank_account') {
-                        createOptions.payment_method_types = ['us_bank_account'];
-                    }
-                } else {
-                    // Legacy IDs (src_XXX, ba_XXX, or even tokens/btok_XXX if used directly)
-                    createOptions.source = pmId;
-
-                    // If it's a bank account (ba_...), we MUST specify ach_debit as a type
-                    if (pmId.startsWith('ba_')) {
-                        createOptions.payment_method_types = ['ach_debit'];
-                    }
-                }
-
+                createOptions.payment_method = pmId;
                 createOptions.confirm = true; // Automatically confirm the payment
                 createOptions.off_session = false; // User is present
                 createOptions.return_url = process.env.FRONTEND_URL || 'http://localhost:3000';
             } else {
-                createOptions.automatic_payment_methods = {
-                    enabled: true
-                };
+                // Determine allowed payment method types
+                // We want to support both Cards and US Bank Accounts
+                createOptions.payment_method_types = ['card', 'us_bank_account'];
+
+                // Note: automatic_payment_methods cannot be used with payment_method_types
+                // createOptions.automatic_payment_methods = {
+                //     enabled: true
+                // };
             }
 
             if (options?.setupFutureUsage) {
