@@ -66,6 +66,9 @@ import { connectDB, getConnectionStatus } from './config/db';
 
 const app: Application = express();
 
+// Trust Proxy for Vercel/Heroku
+app.set('trust proxy', 1);
+
 // ====================================
 // CRITICAL: DISABLE ETAG TO PREVENT 304
 // ====================================
