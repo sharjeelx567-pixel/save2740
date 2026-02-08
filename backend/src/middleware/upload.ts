@@ -5,15 +5,21 @@ import fs from 'fs';
 import { Request } from 'express';
 
 // Ensure uploads directory exists
-const uploadDir = path.join(process.cwd(), 'uploads');
-const kycDir = path.join(uploadDir, 'kyc');
-const profilesDir = path.join(uploadDir, 'profiles');
+// In Vercel (serverless), we can only write to /tmp
+const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
+const uploadDir = isServerless ? '/tmp' : path.join(process.cwd(), 'uploads');
+const kycDir = isServerless ? '/tmp/kyc' : path.join(uploadDir, 'kyc');
+const profilesDir = isServerless ? '/tmp/profiles' : path.join(uploadDir, 'profiles');
 
-[uploadDir, kycDir, profilesDir].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-});
+try {
+    [uploadDir, kycDir, profilesDir].forEach(dir => {
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+    });
+} catch (error) {
+    console.warn('Failed to create upload directories:', error);
+}
 
 // Configure storage
 const storage = multer.diskStorage({
