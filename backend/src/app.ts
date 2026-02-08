@@ -129,7 +129,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
             success: false,
             error: 'Service temporarily unavailable (DB Connection).',
             code: 'DB_CONNECTION_ERROR',
-            details: process.env.NODE_ENV === 'development' ? error.toString() : undefined
+            details: error.toString() // TEMPORARY DEBUG: Show error in production
         });
     }
 });
