@@ -7,21 +7,7 @@ import { Wallet } from '../models/wallet.model';
 
 const router = express.Router();
 
-// Define schema inline safely
-const PocketSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  name: { type: String, required: true },
-  targetAmount: { type: Number, required: true },
-  currentAmount: { type: Number, default: 0 },
-  icon: { type: String }, // For UI icon/emoji
-  color: { type: String }, // For UI color
-  deadline: { type: Date },
-  dailyAmount: { type: Number, default: 0 },
-  multiplier: { type: Number, default: 1 },
-  status: { type: String, enum: ['active', 'completed', 'cancelled'], default: 'active' },
-}, { timestamps: true });
-
-const Pocket = mongoose.models.Pocket || mongoose.model('Pocket', PocketSchema);
+import { Pocket } from '../models/pocket.model';
 
 // GET /api/saver-pockets - List all pockets
 router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {

@@ -310,8 +310,13 @@ router.post('/deposit', authenticateToken, paymentLimiter, validate(depositSchem
     let transactionStatus: 'pending' | 'completed' | 'failed' = 'pending';
     let requiresAction = false;
 
+    // Scoped for catch block auto-retry
+    let stripeProcessor: any;
+    let effectivePaymentMethodId: string | undefined;
+    let stripeCustomerId: string | null | undefined;
+
     try {
-      const stripeProcessor = getStripeProcessor();
+      stripeProcessor = getStripeProcessor();
 
       // Look up the saved payment method to get stripePaymentMethodId
       const { PaymentMethod } = await import('../models/payment-method.model');
@@ -321,15 +326,17 @@ router.post('/deposit', authenticateToken, paymentLimiter, validate(depositSchem
         status: 'active'
       });
 
-      if (!savedPaymentMethod || !savedPaymentMethod.stripePaymentMethodId) {
+      if (!savedPaymentMethod || (!savedPaymentMethod.stripePaymentMethodId && !savedPaymentMethod.providerId)) {
         return res.status(400).json({
           success: false,
           error: 'Invalid payment method. Please add a new card.'
         });
       }
 
+      effectivePaymentMethodId = savedPaymentMethod.stripePaymentMethodId || savedPaymentMethod.providerId;
+
       // Get or create Stripe customer
-      let stripeCustomerId = wallet.stripeCustomerId || savedPaymentMethod.stripeCustomerId;
+      stripeCustomerId = wallet.stripeCustomerId || savedPaymentMethod.stripeCustomerId;
       if (!stripeCustomerId) {
         const user = await User.findOne({ userId: req.userId });
         if (user) {
@@ -355,7 +362,7 @@ router.post('/deposit', authenticateToken, paymentLimiter, validate(depositSchem
           walletId: wallet._id.toString()
         },
         {
-          paymentMethodId: savedPaymentMethod.stripePaymentMethodId
+          paymentMethodId: effectivePaymentMethodId
         }
       );
 
@@ -376,11 +383,85 @@ router.post('/deposit', authenticateToken, paymentLimiter, validate(depositSchem
       }
 
     } catch (stripeError: any) {
-      console.warn('Stripe error:', stripeError.message);
-      return res.status(400).json({
-        success: false,
-        error: stripeError.message || 'Payment processing failed'
-      });
+      // HANDLE UNVERIFIED/DETACHED BANK ACCOUNT IN TEST MODE (Auto-retry)
+      const isTestMode = (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test');
+      const errorMsg = stripeError.message?.toLowerCase() || '';
+      const isNotVerifiedError = errorMsg.includes('not verified');
+      const isNotAttachedError = errorMsg.includes('attach it to a customer') || errorMsg.includes('provided paymentmethod cannot be attached'); // Stripe error phrasing
+
+      if (isTestMode && (isNotVerifiedError || isNotAttachedError) && stripeCustomerId && effectivePaymentMethodId) {
+        try {
+          console.log(`[Wallet Deposit] Auto-repairing bank account ${effectivePaymentMethodId} (Verified/Attached) and retrying...`);
+
+          const stripe = stripeProcessor.getStripeInstance();
+
+          // 1. Ensure attached (us_bank_account requires SetupIntent, NOT direct attach)
+          try {
+            await stripe.setupIntents.create({
+              customer: stripeCustomerId,
+              payment_method: effectivePaymentMethodId,
+              payment_method_types: ['us_bank_account'],
+              confirm: true,
+              mandate_data: {
+                customer_acceptance: {
+                  type: 'online',
+                  online: {
+                    ip_address: req.ip || '127.0.0.1',
+                    user_agent: req.headers['user-agent'] || 'Save2740-App'
+                  },
+                },
+              },
+            });
+            console.log(`[Wallet Deposit] Attached ${effectivePaymentMethodId} via SetupIntent`);
+          } catch (e: any) {
+            // Ignore "already attached" errors
+            if (!e.message?.includes('already attached') && !e.message?.includes('attached to a customer')) {
+              console.log('Auto-attach step warning:', e.message);
+            }
+          }
+
+          // 2. Ensure verified (idempotent-ish via our processor)
+          try {
+            await stripeProcessor.verifyPaymentMethod(effectivePaymentMethodId, stripeCustomerId);
+          } catch (e: any) { console.log('Auto-verify step warning:', e.message); }
+
+          // Retry Create Payment Intent
+          const amountInCents = Math.round(amount * 100);
+          const retryResult = await stripeProcessor.createPaymentIntent(
+            amountInCents,
+            currency,
+            stripeCustomerId,
+            {
+              userId: req.userId,
+              transactionType: 'deposit',
+              walletId: wallet._id.toString(),
+              autoVerified: 'true'
+            },
+            {
+              paymentMethodId: effectivePaymentMethodId
+            }
+          );
+
+          stripePaymentIntentId = retryResult.paymentIntentId;
+          clientSecret = retryResult.clientSecret;
+          transactionStatus = 'completed'; // If it succeeds now, it's usually instant in test
+
+          console.log(`[Wallet Deposit] Retry successful for PI ${stripePaymentIntentId}`);
+          // Continue to transaction creation
+        } catch (retryError: any) {
+          console.error('[Wallet Deposit] Retry failed:', retryError.message);
+          return res.status(400).json({
+            success: false,
+            error: `Bank account repair failed: ${retryError.message}`
+          });
+        }
+      } else {
+        console.warn('Stripe error:', stripeError.message);
+        return res.status(400).json({
+          success: false,
+          error: stripeError.message || 'Payment processing failed'
+        });
+      }
     }
 
     // Create transaction record
@@ -835,7 +916,7 @@ router.post('/withdraw', authenticateToken, paymentLimiter, validate(withdrawSch
       const payoutResult = await stripeProcessor.createPayout(
         amount,
         'usd',
-        paymentMethod.stripePaymentMethodId, // destination
+        paymentMethod.stripePaymentMethodId || paymentMethod.providerId, // destination fallback
         {
           userId: req.userId,
           transactionId: transaction._id.toString()

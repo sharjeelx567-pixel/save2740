@@ -33,7 +33,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     await connectDB();
-    
+
     const methods = await PaymentMethod.find({
       userId: req.userId,
       status: 'active'
@@ -42,6 +42,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     res.json({
       success: true,
       data: methods.map(m => ({
+        _id: m._id,
         id: m._id,
         type: m.type,
         brand: m.brand,
@@ -49,12 +50,194 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
         expMonth: m.expMonth,
         expYear: m.expYear,
         isDefault: m.isDefault,
-        createdAt: m.createdAt
+        createdAt: m.createdAt,
+        name: m.name || (m.type === 'card' ? `${m.brand} •••• ${m.last4}` : `Bank •••• ${m.last4}`)
       }))
     });
   } catch (error) {
     console.error('List payment methods error:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch payment methods' });
+  }
+});
+
+/**
+ * POST /api/payment-methods
+ * Directly add a payment method (used for bank accounts or legacy card flow)
+ */
+router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    await connectDB();
+    const { type, bankName, accountNumber, routingNumber, accountType, isDefault = false, name } = req.body;
+
+    if (type !== 'bank_account') {
+      return res.status(400).json({ success: false, error: 'Direct POST only supported for bank accounts. Use /setup-intent for cards.' });
+    }
+
+    if (!accountNumber || !routingNumber) {
+      return res.status(400).json({ success: false, error: 'Account and routing numbers are required' });
+    }
+
+    const { getStripeProcessor } = await import('../utils/stripe-processor');
+    const stripeProcessor = getStripeProcessor();
+
+    // 1. Tokenize bank details
+    const tokenResult = await stripeProcessor.tokenizePaymentMethod({
+      type: 'bank_account',
+      provider: 'stripe',
+      accountNumber,
+      routingNumber,
+      accountHolderName: name || 'User Account'
+    });
+
+    if (!tokenResult.success) {
+      return res.status(400).json({ success: false, error: tokenResult.error });
+    }
+
+    // 2. Get/Create customer
+    const stripeCustomerId = await getOrCreateStripeCustomer(req.userId!);
+
+    if (!stripeCustomerId) {
+      return res.status(400).json({ success: false, error: 'Could not create payment profile' });
+    }
+
+    // 3. Attach token to customer (this creates a persistent BankAccount or Source)
+    const stripe = stripeProcessor.getStripeInstance();
+    let sourceId: string;
+    let setupIntentId: string | undefined;
+
+    try {
+
+      // Use SetupIntent to attach the PaymentMethod (bypass direct attach restriction for unverified banks)
+      const setupIntent = await stripe.setupIntents.create({
+        customer: stripeCustomerId,
+        payment_method: tokenResult.externalId,
+        payment_method_types: ['us_bank_account'],
+        confirm: true,
+        return_url: 'https://example.com/return', // Placeholder
+        mandate_data: {
+          customer_acceptance: {
+            type: 'online',
+            online: {
+              ip_address: req.ip || '127.0.0.1',
+              user_agent: req.headers['user-agent'] || 'Save2740-App'
+            },
+          },
+        },
+      });
+
+      // If setup intent succeeds or requires action, the PM is attached
+      sourceId = tokenResult.externalId;
+      setupIntentId = setupIntent.id;
+      console.log(`[PaymentMethods] Attached PaymentMethod ${sourceId} to customer ${stripeCustomerId} via SetupIntent ${setupIntentId}`);
+    } catch (stripeError: any) {
+      if (stripeError.code === 'bank_account_exists' || stripeError.message?.includes('already exists')) {
+        console.log(`[PaymentMethods] Bank account already exists for customer ${stripeCustomerId}, retrieving existing PaymentMethod`);
+
+        // List PaymentMethods for this customer
+        const pms = await stripe.paymentMethods.list({
+          customer: stripeCustomerId,
+          type: 'us_bank_account'
+        });
+
+        const existingPm = pms.data.find((s: any) =>
+          s.us_bank_account?.last4 === tokenResult.last4 &&
+          s.us_bank_account?.routing_number === routingNumber
+        );
+
+        if (existingPm) {
+          sourceId = existingPm.id;
+          // Ensure it is attached to THIS customer (idempotent)
+          if (existingPm.customer !== stripeCustomerId) {
+            try {
+              await stripe.paymentMethods.attach(sourceId, { customer: stripeCustomerId });
+            } catch (e) { /* ignore already attached */ }
+          }
+        } else {
+          // Fallback: maybe it's a legacy source? 
+          const sources = await stripe.customers.listSources(stripeCustomerId, { object: 'bank_account', limit: 100 });
+          const existingSource = sources.data.find((s: any) =>
+            s.last4 === tokenResult.last4 && s.routing_number === routingNumber
+          );
+          if (existingSource) {
+            sourceId = existingSource.id;
+          } else {
+            throw stripeError;
+          }
+        }
+      } else {
+        throw stripeError;
+      }
+    }
+
+    // 4. Check for existing internal record to avoid duplicates
+    let paymentMethod = await PaymentMethod.findOne({
+      userId: req.userId,
+      providerId: sourceId,
+      status: { $ne: 'deleted' }
+    });
+
+    if (paymentMethod) {
+      console.log(`[PaymentMethods] Updating existing internal record ${paymentMethod._id}`);
+      paymentMethod.status = 'active';
+      paymentMethod.isDefault = isDefault;
+      paymentMethod.name = name || bankName || paymentMethod.name;
+      await paymentMethod.save();
+    } else {
+      // Create our internal record
+      paymentMethod = await PaymentMethod.create({
+        userId: req.userId,
+        type: 'bank_account',
+        provider: 'stripe',
+        providerId: sourceId,
+        stripePaymentMethodId: sourceId,
+        stripeCustomerId: stripeCustomerId,
+        brand: bankName || 'Bank Account',
+        last4: tokenResult.last4,
+        isDefault: isDefault,
+        status: 'active',
+        name: name || bankName || `Bank Account •••• ${tokenResult.last4}`
+      });
+    }
+
+    // 5. Auto-verify in test mode
+    const isTestMode = (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test');
+    if (isTestMode && paymentMethod.type === 'bank_account') {
+      try {
+        console.log(`[PaymentMethods] Auto-verifying bank account ${setupIntentId || sourceId} for test mode`);
+        await stripeProcessor.verifyPaymentMethod(setupIntentId || sourceId, stripeCustomerId);
+      } catch (verifyError: any) {
+        console.warn(`[PaymentMethods] Auto-verification step warning:`, verifyError.message);
+      }
+
+      try {
+        // Force attach to be sure it is linked to customer
+        await stripe.paymentMethods.attach(sourceId, { customer: stripeCustomerId });
+        console.log(`[PaymentMethods] Force-attached ${sourceId} to customer ${stripeCustomerId}`);
+      } catch (attachError: any) {
+        // Ignore "already attached" errors
+        if (!attachError.message?.includes('attached to a Customer')) {
+          console.warn(`[PaymentMethods] Force-attach failed:`, attachError.message);
+        }
+      }
+    }
+
+    // Handle default status
+    if (isDefault) {
+      await PaymentMethod.updateMany(
+        { userId: req.userId, _id: { $ne: paymentMethod._id } },
+        { isDefault: false }
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      message: isTestMode ? 'Bank account registered and verified for test' : 'Bank account registered successfully',
+      data: paymentMethod
+    });
+
+  } catch (error: any) {
+    console.error('Add payment method error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to add payment method' });
   }
 });
 
@@ -68,10 +251,10 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
 router.post('/setup-intent', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     await connectDB();
-    
+
     // Get or create Stripe customer
     const stripeCustomerId = await getOrCreateStripeCustomer(req.userId!);
-    
+
     if (!stripeCustomerId) {
       return res.status(400).json({
         success: false,
@@ -100,9 +283,9 @@ router.post('/setup-intent', authenticateToken, async (req: AuthRequest, res: Re
     });
   } catch (error: any) {
     console.error('Create setup intent error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Failed to create setup intent' 
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to create setup intent'
     });
   }
 });
@@ -119,7 +302,7 @@ router.post('/setup-intent', authenticateToken, async (req: AuthRequest, res: Re
 router.post('/confirm', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     await connectDB();
-    
+
     const { paymentMethodId, isDefault = true } = req.body;
 
     if (!paymentMethodId) {
@@ -131,7 +314,7 @@ router.post('/confirm', authenticateToken, async (req: AuthRequest, res: Respons
 
     // Validate this is a real Stripe payment method
     const stripePaymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
-    
+
     if (!stripePaymentMethod) {
       return res.status(400).json({
         success: false,
@@ -141,7 +324,7 @@ router.post('/confirm', authenticateToken, async (req: AuthRequest, res: Respons
 
     // Get stripe customer ID
     const stripeCustomerId = await getOrCreateStripeCustomer(req.userId!);
-    
+
     if (!stripeCustomerId) {
       return res.status(400).json({
         success: false,
@@ -180,10 +363,11 @@ router.post('/confirm', authenticateToken, async (req: AuthRequest, res: Respons
     if (existingMethod) {
       existingMethod.isDefault = isDefault;
       await existingMethod.save();
-      
+
       return res.json({
         success: true,
         data: {
+          _id: existingMethod._id,
           id: existingMethod._id,
           type: existingMethod.type,
           brand: existingMethod.brand,
@@ -198,7 +382,7 @@ router.post('/confirm', authenticateToken, async (req: AuthRequest, res: Respons
 
     // Extract card details (SAFE - only metadata, no sensitive data)
     const card = stripePaymentMethod.card;
-    
+
     // Save to database
     const savedMethod = await PaymentMethod.create({
       userId: req.userId,
@@ -220,6 +404,7 @@ router.post('/confirm', authenticateToken, async (req: AuthRequest, res: Respons
     res.status(201).json({
       success: true,
       data: {
+        _id: savedMethod._id,
         id: savedMethod._id,
         type: savedMethod.type,
         brand: savedMethod.brand,
@@ -232,7 +417,7 @@ router.post('/confirm', authenticateToken, async (req: AuthRequest, res: Respons
     });
   } catch (error: any) {
     console.error('Confirm payment method error:', error);
-    
+
     // Handle specific Stripe errors
     if (error.type === 'StripeCardError') {
       return res.status(400).json({
@@ -241,10 +426,10 @@ router.post('/confirm', authenticateToken, async (req: AuthRequest, res: Respons
         code: error.code
       });
     }
-    
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Failed to save payment method' 
+
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to save payment method'
     });
   }
 });
@@ -256,7 +441,7 @@ router.post('/confirm', authenticateToken, async (req: AuthRequest, res: Respons
 router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     await connectDB();
-    
+
     const method = await PaymentMethod.findOne({
       _id: req.params.id,
       userId: req.userId
@@ -312,7 +497,7 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response)
 router.put('/:id/default', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     await connectDB();
-    
+
     const method = await PaymentMethod.findOne({
       _id: req.params.id,
       userId: req.userId,
@@ -361,7 +546,7 @@ async function getOrCreateStripeCustomer(userId: string): Promise<string | null>
   try {
     // Check wallet for existing customer ID
     let wallet = await Wallet.findOne({ userId });
-    
+
     if (wallet?.stripeCustomerId) {
       // Verify customer still exists in Stripe
       try {
@@ -402,6 +587,12 @@ async function getOrCreateStripeCustomer(userId: string): Promise<string | null>
     } else {
       wallet.stripeCustomerId = customer.id;
       await wallet.save();
+    }
+
+    // Save to user (already fetched above)
+    if (user) {
+      user.stripeCustomerId = customer.id;
+      await user.save();
     }
 
     return customer.id;

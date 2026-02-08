@@ -24,7 +24,7 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
     const csrfToken = req.headers['x-csrf-token'] as string;
     const sessionToken = req.cookies?.csrfToken;
 
-    if       (!csrfToken || !sessionToken || csrfToken !== sessionToken) {
+    if (!csrfToken || !sessionToken || csrfToken !== sessionToken) {
         return res.status(403).json({
             success: false,
             error: 'Invalid CSRF token',
@@ -60,13 +60,24 @@ export function xssProtection(req: Request, res: Response, next: NextFunction) {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '1; mode=block');
+    const connectSrc = [
+        "'self'",
+        "https://api.stripe.com",
+        "http://localhost:5000",
+        "http://localhost:3000",
+        "http://127.0.0.1:5000",
+        "http://127.0.0.1:3000",
+        process.env.FRONTEND_URL,
+        process.env.BACKEND_URL
+    ].filter(Boolean).join(' ');
+
     res.setHeader('Content-Security-Policy',
         "default-src 'self'; " +
         "script-src 'self' 'unsafe-inline' https://js.stripe.com; " +
         "style-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data: https:; " +
         "font-src 'self' data:; " +
-        "connect-src 'self' https://api.stripe.com; " +
+        `connect-src ${connectSrc}; ` +
         "frame-src https://js.stripe.com"
     );
     next();

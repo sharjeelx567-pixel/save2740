@@ -32,11 +32,11 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     await connectDB();
     const { type, cardNumber, expiry, cvc, bankName, accountNumber, routingNumber, accountType, isDefault } = req.body;
 
-    if (!type || (type === 'card' && (!cardNumber || !expiry || !cvc)) || 
-        (type === 'bank_account' && (!accountNumber || !routingNumber))) {
-      return res.status(400).json({ 
+    if (!type || (type === 'card' && (!cardNumber || !expiry || !cvc)) ||
+      (type === 'bank_account' && (!accountNumber || !routingNumber))) {
+      return res.status(400).json({
         success: false,
-        error: 'Missing required payment method details' 
+        error: 'Missing required payment method details'
       });
     }
 
@@ -51,15 +51,15 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     let providerId: string | undefined;
     let last4: string = '';
     let name: string = '';
+    let stripeCustomerId: string | undefined;
 
     // Process with Stripe
     try {
       const stripeProcessor = getStripeProcessor();
-      
+
       // Get or create Stripe customer
       const user = await User.findOne({ userId: req.userId });
-      let stripeCustomerId: string | undefined;
-      
+
       if (user) {
         // Check if user has stripeCustomerId in wallet
         const { Wallet } = require('../models/wallet.model');
@@ -146,6 +146,8 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       last4,
       status: 'active',
       providerId,
+      stripePaymentMethodId: providerId, // Store in the newer field too
+      stripeCustomerId,
       isDefault: !!isDefault
     });
 
@@ -156,9 +158,9 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Add payment method error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Failed to add payment method' 
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to add payment method'
     });
   }
 });
@@ -167,7 +169,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
 router.post('/:id/default', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     await connectDB();
-    
+
     // Unset all defaults
     await PaymentMethod.updateMany(
       { userId: req.userId },
@@ -195,9 +197,9 @@ router.post('/:id/default', authenticateToken, async (req: AuthRequest, res: Res
     });
   } catch (error) {
     console.error('Set default payment method error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to update default payment method' 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update default payment method'
     });
   }
 });
@@ -206,7 +208,7 @@ router.post('/:id/default', authenticateToken, async (req: AuthRequest, res: Res
 router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     await connectDB();
-    
+
     const method = await PaymentMethod.findOne({ _id: req.params.id, userId: req.userId });
     if (!method) {
       return res.status(404).json({
@@ -229,15 +231,15 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response)
     method.status = 'inactive';
     await method.save();
 
-    res.json({ 
-      success: true, 
-      message: 'Payment method removed successfully' 
+    res.json({
+      success: true,
+      message: 'Payment method removed successfully'
     });
   } catch (error) {
     console.error('Delete payment method error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to remove payment method' 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to remove payment method'
     });
   }
 });

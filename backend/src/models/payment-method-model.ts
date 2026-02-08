@@ -16,17 +16,17 @@ export interface IPaymentMethodModel extends Document {
   issuer?: string; // bank name
   status: 'active' | 'inactive' | 'expired' | 'cancelled';
   isDefault: boolean;
-  
+
   // Stripe/Plaid Token IDs (references, not actual data)
   stripeTokenId?: string; // For cards
   plaidAccountId?: string; // For bank accounts
   stripePaymentMethodId?: string;
-  
+
   // Metadata only
   expiryMonth?: number;
   expiryYear?: number;
   billingZip?: string; // Only zip for AVS verification
-  
+
   linkedAt: Date;
   lastUsedAt?: Date;
   expiresAt?: Date;
@@ -36,7 +36,7 @@ export interface IPaymentMethodModel extends Document {
 
 const paymentMethodSchema = new Schema<IPaymentMethodModel>(
   {
-    userId: { type: String, required: true, index: true },
+    userId: { type: String, required: true },
     type: {
       type: String,
       enum: ['bank-account', 'debit-card'],

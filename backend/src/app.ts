@@ -76,6 +76,11 @@ app.disable("etag");
 // ====================================
 // This middleware ensures ALL dynamic APIs return HTTP 200 (never 304)
 app.use((req: Request, res: Response, next: NextFunction) => {
+    console.log(`[DEBUG] ${req.method} ${req.url}`);
+    next();
+});
+
+app.use((req: Request, res: Response, next: NextFunction) => {
     // Define static endpoints that CAN be cached
     const staticEndpoints = [
         '/health',
@@ -146,6 +151,8 @@ const allowedOrigins = [
     process.env.ADMIN_PANEL_URL,
     'http://localhost:3000',
     'http://localhost:3001', // Admin panel
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
     'https://save-2740-frrontend.vercel.app',
     'https://save-2740-frontend.vercel.app',
     'https://save2740-ten.vercel.app', // Explicitly added user's frontend

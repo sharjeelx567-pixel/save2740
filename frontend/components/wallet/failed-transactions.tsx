@@ -27,7 +27,7 @@ import {
 import { WalletService } from '@/lib/wallet-service'
 
 interface FailedTransaction {
-  id: string
+  _id: string
   amount: number
   description: string
   type: 'deposit' | 'withdrawal' | 'transfer'
@@ -79,7 +79,7 @@ export function FailedTransactions() {
       const response = await fetch(`/api/wallet/transactions/${transactionId}/retry`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
         },
       })
 
@@ -88,7 +88,7 @@ export function FailedTransactions() {
       }
 
       // Remove retried transaction from list
-      setTransactions(prev => prev.filter(t => t.id !== transactionId))
+      setTransactions(prev => prev.filter(t => t._id !== transactionId))
 
       toast({
         title: 'Success',
@@ -155,7 +155,7 @@ export function FailedTransactions() {
           <div className="space-y-4">
             {transactions.map((transaction) => (
               <div
-                key={transaction.id}
+                key={transaction._id}
                 className="p-4 border border-red-200 bg-red-50 rounded-lg"
               >
                 <div className="flex items-start justify-between mb-3">
@@ -223,13 +223,13 @@ export function FailedTransactions() {
                       <Button
                         className="flex-1"
                         size="sm"
-                        onClick={() => handleRetry(transaction.id)}
-                        disabled={retrying === transaction.id}
+                        onClick={() => handleRetry(transaction._id)}
+                        disabled={retrying === transaction._id}
                       >
-                        {retrying === transaction.id && (
+                        {retrying === transaction._id && (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         )}
-                        {retrying === transaction.id ? 'Retrying...' : 'Retry Transaction'}
+                        {retrying === transaction._id ? 'Retrying...' : 'Retry Transaction'}
                       </Button>
                     )}
 

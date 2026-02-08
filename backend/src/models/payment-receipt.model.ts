@@ -37,7 +37,6 @@ const PaymentReceiptSchema = new Schema<IPaymentReceipt>({
         type: String,
         required: true,
         unique: true,
-        index: true,
         default: () => {
             const timestamp = Date.now();
             const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
@@ -47,17 +46,14 @@ const PaymentReceiptSchema = new Schema<IPaymentReceipt>({
     userId: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
-        index: true
+        required: true
     },
     transactionId: {
         type: String,
-        required: true,
-        index: true
+        required: true
     },
     paymentIntentId: {
-        type: String,
-        index: true
+        type: String
     },
     amount: {
         type: Number,
@@ -105,5 +101,5 @@ PaymentReceiptSchema.index({ transactionId: 1 });
 PaymentReceiptSchema.index({ receiptNumber: 1 });
 PaymentReceiptSchema.index({ paymentIntentId: 1 });
 
-export const PaymentReceipt = mongoose.models.PaymentReceipt || 
+export const PaymentReceipt = mongoose.models.PaymentReceipt ||
     mongoose.model<IPaymentReceipt>('PaymentReceipt', PaymentReceiptSchema);

@@ -27,9 +27,14 @@ export function usePaymentMethods(): UsePaymentMethodsReturn {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch('/api/payments/methods', {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Please log in again');
+      }
+
+      const response = await fetch('/api/payment-methods', {
         headers: {
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_AUTH_TOKEN}`,
+          Authorization: `Bearer ${token}`,
         },
         signal: controller.signal,
       });
@@ -43,9 +48,17 @@ export function usePaymentMethods(): UsePaymentMethodsReturn {
       const data = await response.json();
 
       if (data.success) {
-        setBankAccounts(data.data?.bankAccounts || []);
-        setDebitCards(data.data?.debitCards || []);
-        setDefaultMethod(data.data?.defaultMethod || null);
+        // Handle V2 grouped data or flat list
+        const methodsData = data.data?.data || data.data || [];
+        if (Array.isArray(methodsData)) {
+          setBankAccounts(methodsData.filter((m: any) => m.type === 'bank_account' || m.type === 'bank'));
+          setDebitCards(methodsData.filter((m: any) => m.type === 'card' || m.type === 'debit'));
+          setDefaultMethod(methodsData.find((m: any) => m.isDefault) || methodsData[0] || null);
+        } else {
+          setBankAccounts(data.data?.bankAccounts || []);
+          setDebitCards(data.data?.debitCards || []);
+          setDefaultMethod(data.data?.defaultMethod || null);
+        }
       } else {
         setError(data.error || 'Failed to fetch payment methods');
       }

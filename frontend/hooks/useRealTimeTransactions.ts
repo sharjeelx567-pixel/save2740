@@ -63,8 +63,9 @@ export function useRealTimeTransactions(options: UseRealTimeTransactionsOptions 
 
       if (!response.ok) throw new Error(`Failed to fetch transactions: ${response.status}`)
 
-      const data = await response.json()
-      setTransactions(data.transactions || [])
+      const json = await response.json()
+      const transactionData = json.data || json
+      setTransactions(transactionData.transactions || transactionData || [])
       setError(null)
       setLastUpdated(new Date())
     } catch (err) {

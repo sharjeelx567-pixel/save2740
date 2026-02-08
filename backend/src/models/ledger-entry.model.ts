@@ -31,13 +31,11 @@ const LedgerEntrySchema = new Schema<ILedgerEntry>({
     userId: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
-        index: true
+        required: true
     },
     transactionId: {
         type: String,
-        required: true,
-        index: true
+        required: true
     },
     entryType: {
         type: String,
@@ -69,8 +67,7 @@ const LedgerEntrySchema = new Schema<ILedgerEntry>({
         required: true
     },
     referenceId: {
-        type: String,
-        index: true
+        type: String
     },
     metadata: {
         type: Schema.Types.Mixed,
@@ -86,5 +83,5 @@ LedgerEntrySchema.index({ userId: 1, accountType: 1, createdAt: -1 });
 LedgerEntrySchema.index({ transactionId: 1 });
 LedgerEntrySchema.index({ referenceId: 1 });
 
-export const LedgerEntry = mongoose.models.LedgerEntry || 
+export const LedgerEntry = mongoose.models.LedgerEntry ||
     mongoose.model<ILedgerEntry>('LedgerEntry', LedgerEntrySchema);

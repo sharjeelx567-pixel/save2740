@@ -71,7 +71,8 @@ export function useRealTimeWallet(options: UseRealTimeWalletOptions = {}) {
 
       if (!response.ok) throw new Error(`Failed to fetch wallet: ${response.status}`)
 
-      const walletData: WalletData = await response.json()
+      const json = await response.json()
+      const walletData: WalletData = json.data || json
       setData(walletData)
       setError(null)
       setLastUpdated(new Date())

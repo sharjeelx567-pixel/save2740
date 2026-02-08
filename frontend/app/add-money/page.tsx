@@ -12,8 +12,9 @@ import { loadStripe } from "@stripe/stripe-js"
 type Step = "amount" | "method" | "confirm" | "processing" | "success" | "error"
 
 interface PaymentMethod {
-  _id: string
-  type: 'card' | 'bank'
+  _id?: string
+  id?: string
+  type: 'card' | 'bank' | 'bank_account'
   name: string
   last4?: string
   brand?: string
@@ -49,7 +50,7 @@ function AddMoneyPageContent() {
         // Handle double-wrapped response
         const walletData = walletRes.data?.data || walletRes.data
         setWallet(walletData)
-        
+
         // Check if wallet is frozen
         if (walletData.status === 'frozen' || walletData.status === 'suspended') {
           toast.error(`Wallet is ${walletData.status}. Cannot add money.`)
@@ -84,9 +85,9 @@ function AddMoneyPageContent() {
   const handleAmountChange = (val: string) => {
     setAmount(val)
     if (selectedMethod) {
-      const method = paymentMethods.find(m => m._id === selectedMethod)
+      const method = paymentMethods.find(m => (m._id === selectedMethod || m.id === selectedMethod))
       if (method) {
-        setFee(calculateFee(val, method.type))
+        setFee(calculateFee(val, method.type === 'bank_account' ? 'bank' : method.type))
       }
     }
     setError("")
@@ -94,9 +95,9 @@ function AddMoneyPageContent() {
 
   const handleMethodSelect = (methodId: string) => {
     setSelectedMethod(methodId)
-    const method = paymentMethods.find(m => m._id === methodId)
+    const method = paymentMethods.find(m => (m._id === methodId || m.id === methodId))
     if (method) {
-      setFee(calculateFee(amount, method.type))
+      setFee(calculateFee(amount, method.type === 'bank_account' ? 'bank' : method.type))
     }
     setError("")
   }
@@ -132,7 +133,7 @@ function AddMoneyPageContent() {
 
     try {
       const numAmount = parseFloat(amount)
-      const selectedPaymentMethod = paymentMethods.find(m => m._id === selectedMethod)
+      const selectedPaymentMethod = paymentMethods.find(m => (m._id === selectedMethod || m.id === selectedMethod))
 
       const response = await apiClient.post<{
         wallet: WalletData
@@ -256,11 +257,10 @@ function AddMoneyPageContent() {
                     <button
                       key={val}
                       onClick={() => handleAmountChange(val.toString())}
-                      className={`py-2 px-4 rounded-lg font-medium transition-colors ${
-                        amount === val.toString()
+                      className={`py-2 px-4 rounded-lg font-medium transition-colors ${amount === val.toString()
                           ? "bg-brand-green text-white"
                           : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      }`}
+                        }`}
                     >
                       ${val}
                     </button>
@@ -293,33 +293,35 @@ function AddMoneyPageContent() {
 
             <div className="space-y-4 mb-8">
               {paymentMethods.length > 0 ? (
-                paymentMethods.map((method) => (
-                  <button
-                    key={method._id}
-                    onClick={() => handleMethodSelect(method._id)}
-                    className={`w-full p-4 border-2 rounded-lg transition-colors text-left ${
-                      selectedMethod === method._id
-                        ? "border-brand-green bg-emerald-50"
-                        : "border-slate-300 hover:border-slate-400"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold text-slate-900">
-                        {method.type === 'card' ? 'Debit Card' : 'Bank Account'}
-                      </span>
-                      {selectedMethod === method._id && (
-                        <Check className="w-5 h-5 text-brand-green" />
-                      )}
-                    </div>
-                    <p className="text-sm text-slate-600">
-                      {method.name} {method.last4 ? `•••• ${method.last4}` : ''}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-2">
-                      Fee: ${calculateFee(amount, method.type).toFixed(2)} 
-                      {method.type === 'card' ? ' (2.9% + $0.30)' : ' (0.8%, max $5)'}
-                    </p>
-                  </button>
-                ))
+                paymentMethods.map((method) => {
+                  const methodId = method._id || method.id
+                  return (
+                    <button
+                      key={methodId}
+                      onClick={() => handleMethodSelect(methodId!)}
+                      className={`w-full p-4 border-2 rounded-lg transition-colors text-left ${selectedMethod === methodId
+                          ? "border-brand-green bg-emerald-50"
+                          : "border-slate-300 hover:border-slate-400"
+                        }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-slate-900">
+                          {method.type === 'card' ? 'Debit Card' : 'Bank Account'}
+                        </span>
+                        {selectedMethod === methodId && (
+                          <Check className="w-5 h-5 text-brand-green" />
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-600">
+                        {method.name} {method.last4 ? `•••• ${method.last4}` : ''}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-2">
+                        Fee: ${calculateFee(amount, method.type === 'bank_account' ? 'bank' : method.type).toFixed(2)}
+                        {method.type === 'card' ? ' (2.9% + $0.30)' : ' (0.8%, max $5)'}
+                      </p>
+                    </button>
+                  )
+                })
               ) : (
                 <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-lg">
                   <p className="text-slate-500 mb-2">No payment methods found</p>
@@ -364,7 +366,7 @@ function AddMoneyPageContent() {
   // Step 3: Confirm
   if (currentStep === "confirm") {
     const total = (parseFloat(amount) || 0) + fee
-    const selectedPaymentMethod = paymentMethods.find(m => m._id === selectedMethod)
+    const selectedPaymentMethod = paymentMethods.find(m => (m._id === selectedMethod || m.id === selectedMethod))
     return (
       <div className="min-h-screen bg-[#F8FAFC] p-4 sm:p-6 md:p-8 flex items-center justify-center">
         <Card className="w-full max-w-md">

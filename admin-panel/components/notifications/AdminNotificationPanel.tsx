@@ -213,9 +213,8 @@ export default function AdminNotificationPanel() {
                   return (
                     <li
                       key={id}
-                      className={`px-4 py-3 hover:bg-gray-50 transition-colors ${
-                        !n.read ? 'bg-green-50/50' : ''
-                      }`}
+                      className={`px-4 py-3 hover:bg-gray-50 transition-colors ${!n.read ? 'bg-green-50/50' : ''
+                        }`}
                     >
                       <div className="flex gap-3">
                         {!n.read && (

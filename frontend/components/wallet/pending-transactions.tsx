@@ -27,7 +27,7 @@ import {
 import { WalletService } from '@/lib/wallet-service'
 
 interface PendingTransaction {
-  id: string
+  _id: string
   amount: number
   description: string
   type: 'deposit' | 'withdrawal' | 'transfer'
@@ -82,7 +82,7 @@ export function PendingTransactions() {
       const response = await fetch(`/api/wallet/transactions/${transactionId}/cancel`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
         },
       })
 
@@ -91,7 +91,7 @@ export function PendingTransactions() {
       }
 
       // Remove cancelled transaction from list
-      setTransactions(prev => prev.filter(t => t.id !== transactionId))
+      setTransactions(prev => prev.filter(t => t._id !== transactionId))
 
       toast({
         title: 'Success',
@@ -176,7 +176,7 @@ export function PendingTransactions() {
           <div className="space-y-4">
             {transactions.map((transaction) => (
               <div
-                key={transaction.id}
+                key={transaction._id}
                 className="p-4 border border-yellow-200 bg-yellow-50 rounded-lg"
               >
                 <div className="flex items-start justify-between mb-3">
@@ -236,13 +236,13 @@ export function PendingTransactions() {
                       variant="destructive"
                       className="w-full"
                       size="sm"
-                      onClick={() => handleCancel(transaction.id)}
-                      disabled={cancelling === transaction.id}
+                      onClick={() => handleCancel(transaction._id)}
+                      disabled={cancelling === transaction._id}
                     >
-                      {cancelling === transaction.id && (
+                      {cancelling === transaction._id && (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       )}
-                      {cancelling === transaction.id ? 'Cancelling...' : 'Cancel Transaction'}
+                      {cancelling === transaction._id ? 'Cancelling...' : 'Cancel Transaction'}
                     </Button>
                   )}
                 </div>

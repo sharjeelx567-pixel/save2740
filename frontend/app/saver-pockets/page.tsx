@@ -159,6 +159,66 @@ function SaverPocketsPageContent() {
     setIsModalOpen(true)
   }
 
+  const handleDelete = async () => {
+    if (!editingPocketId || !confirm("Are you sure you want to delete this bucket and return all funds to your wallet?")) return;
+
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/saver-pockets/${editingPocketId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        setPockets(pockets.filter(p => p.id !== editingPocketId));
+        toast({ title: "Deleted", description: "Savings bucket removed successfully" });
+        setIsModalOpen(false);
+      } else {
+        toast({ variant: "destructive", title: "Error", description: "Failed to delete bucket" });
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to delete bucket" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  const handleFund = async (pocketId: string) => {
+    const amount = prompt("How much would you like to add from your wallet?");
+    if (!amount || isNaN(parseFloat(amount))) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/saver-pockets/${pocketId}/fund`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ amount: parseFloat(amount) })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const updatedPocket = data.data.pocket || data.data;
+        setPockets(pockets.map(p => p.id === pocketId ? {
+          ...p,
+          saved: updatedPocket.currentAmount.toString(),
+          progress: updatedPocket.targetAmount ? Math.min(100, (updatedPocket.currentAmount / updatedPocket.targetAmount) * 100) : 0
+        } : p));
+        toast({ title: "Funds Added!", description: `Successfully added $${parseFloat(amount).toFixed(2)}` });
+      } else {
+        const err = await response.json();
+        toast({ variant: "destructive", title: "Error", description: err.error || "Insufficient funds" });
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to fund bucket" });
+    }
+  }
+
   const handleNewClick = () => {
     setEditingPocketId(null);
     setFormData({ name: '', dailyAmount: '', multiplier: '1', targetAmount: '' });
@@ -208,7 +268,7 @@ function SaverPocketsPageContent() {
 
                   <div>
                     <h3 className="text-lg md:text-xl font-bold text-slate-800">{pocket.name}</h3>
-                    <p className="text-xs md:text-sm text-slate-500 mt-1">Daily Contribution: </p>
+                    <p className="text-xs md:text-sm text-slate-500 mt-1">Daily Contribution: <span className="font-bold text-slate-700">${(parseFloat(pocket.dailyContribution) * parseInt(pocket.multiplier)).toFixed(2)}</span> ({pocket.multiplier === '1' ? 'Normal' : `x${pocket.multiplier}`})</p>
                   </div>
 
                   <div className="space-y-2">
@@ -216,13 +276,21 @@ function SaverPocketsPageContent() {
                       <div className="h-full bg-brand-green rounded-full" style={{ width: `${pocket.progress}%` }} />
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs md:text-sm font-medium text-slate-600">Saved: </p>
-                      <button
-                        onClick={() => handleEditClick(pocket)}
-                        className="text-xs md:text-sm font-bold text-brand-green hover:underline"
-                      >
-                        Edit Goal
-                      </button>
+                      <p className="text-xs md:text-sm font-medium text-slate-600">Saved: <span className="font-bold text-brand-green">${parseFloat(pocket.saved).toFixed(2)} / ${parseFloat(pocket.targetAmount).toFixed(2)}</span></p>
+                      <div className="flex gap-4">
+                        <button
+                          onClick={() => handleFund(pocket.id)}
+                          className="text-xs md:text-sm font-bold text-brand-green hover:underline"
+                        >
+                          Fund
+                        </button>
+                        <button
+                          onClick={() => handleEditClick(pocket)}
+                          className="text-xs md:text-sm font-bold text-slate-400 hover:text-slate-600 hover:underline"
+                        >
+                          Edit Goal
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -304,20 +372,31 @@ function SaverPocketsPageContent() {
             </div>
 
             <div className="flex gap-3 pt-4">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-2 bg-brand-green text-white rounded-lg font-medium hover:bg-emerald-500 transition-colors disabled:opacity-50"
-              >
-                {isSubmitting ? 'Saving...' : (editingPocketId ? 'Update Pocket' : 'Create Pocket')}
-              </button>
+              {editingPocketId && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="px-4 py-2 border border-red-200 text-red-600 rounded-lg font-medium hover:bg-red-50 transition-colors"
+                >
+                  Delete
+                </button>
+              )}
+              <div className="flex-1 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 bg-brand-green text-white rounded-lg font-medium hover:bg-emerald-500 transition-colors disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Saving...' : (editingPocketId ? 'Update' : 'Create')}
+                </button>
+              </div>
             </div>
           </form>
         </DialogContent>

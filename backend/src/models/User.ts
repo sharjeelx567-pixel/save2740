@@ -41,7 +41,6 @@ const userSchema = new Schema<IUser>(
       type: String,
       required: true,
       unique: true,
-      index: true,
     },
     email: {
       type: String,
@@ -49,7 +48,6 @@ const userSchema = new Schema<IUser>(
       unique: true,
       lowercase: true,
       trim: true,
-      index: true,
     },
     phoneNumber: {
       type: String,
@@ -117,7 +115,6 @@ const userSchema = new Schema<IUser>(
       type: String,
       unique: true,
       required: true,
-      index: true,
     },
     referredBy: {
       type: String,

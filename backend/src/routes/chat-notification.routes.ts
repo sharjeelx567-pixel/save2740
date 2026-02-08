@@ -46,15 +46,15 @@ router.post('/user-message', authenticateToken, async (req: AuthRequest, res: Re
 
     const successCount = fcmAdminIds.length > 0
       ? await fcmService.sendToMultipleUsers(fcmAdminIds, {
-          title: `New message from ${senderName}`,
-          body: message.substring(0, 100),
-          data: {
-            type: 'user_chat',
-            userId: userId!,
-            userName: senderName,
-            timestamp: new Date().toISOString(),
-          },
-        })
+        title: `New message from ${senderName}`,
+        body: message.substring(0, 100),
+        data: {
+          type: 'user_chat',
+          userId: userId!,
+          userName: senderName,
+          timestamp: new Date().toISOString(),
+        },
+      })
       : 0;
 
     // Save in-app notification for every admin (Admin + User) so feed shows for all

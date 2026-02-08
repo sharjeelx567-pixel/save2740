@@ -37,7 +37,9 @@ export function useWallet(
       if (!response.success || !response.data) {
         throw response.error || new Error('Failed to fetch wallet data');
       }
-      return response.data;
+      // Handle double-wrapped response: { success, data: { success, data: wallet } }
+      const walletData = (response.data as any).data || response.data;
+      return walletData as WalletData;
     },
     enabled: shouldFetch,
     refetchInterval: false,

@@ -50,15 +50,13 @@ const AutoDebitSchema = new Schema<IAutoDebit>({
     },
     nextDebitDate: {
         type: Date,
-        required: true,
-        index: true // For finding due debits
+        required: true
     },
     lastDebitDate: Date,
     status: {
         type: String,
         enum: ['active', 'paused', 'cancelled', 'failed'],
-        default: 'active',
-        index: true
+        default: 'active'
     },
     failureCount: {
         type: Number,
@@ -77,5 +75,5 @@ const AutoDebitSchema = new Schema<IAutoDebit>({
 // Index for finding debits that need processing
 AutoDebitSchema.index({ status: 1, nextDebitDate: 1 });
 
-export const AutoDebit = mongoose.models.AutoDebit || 
+export const AutoDebit = mongoose.models.AutoDebit ||
     mongoose.model<IAutoDebit>('AutoDebit', AutoDebitSchema);

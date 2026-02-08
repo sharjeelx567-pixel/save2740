@@ -25,7 +25,6 @@ export async function connectDB(): Promise<Mongoose> {
         bufferCommands: false,
         maxPoolSize: 10,
         minPoolSize: 2,
-        family: 4, // Force IPv4 to resolve partial ETIMEOUT DNS issues
     };
 
     try {

@@ -76,11 +76,11 @@ export function WalletFreezeNotice({
     setLoading(true)
 
     try {
-      const response = await fetch('/api/wallet/freeze', {
-        method: 'DELETE',
+      const response = await fetch('/api/wallet/unfreeze', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
         },
         body: JSON.stringify({
           verificationCode,

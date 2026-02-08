@@ -131,13 +131,13 @@ export function WithdrawMoney() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
           'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify({
           amount: parseFloat(formData.amount),
           paymentMethodId: formData.paymentMethodId,
-          description: formData.description || 'Wallet withdrawal',
+          reason: formData.description || 'Wallet withdrawal',
           twoFactorCode: formData.twoFactorCode,
         }),
       })
@@ -148,8 +148,20 @@ export function WithdrawMoney() {
       }
 
       const result = await response.json()
-      setSuccessData(result)
+
+      // Enhance result with display data
+      const displayData = {
+        ...result.data,
+        amount: parseFloat(formData.amount),
+        transactionId: result.data.transaction._id || result.data.transaction.transactionId,
+        estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
+        message: result.message || `Withdrawal of $${formData.amount} initiated successfully`
+      }
+
+      setSuccessData(displayData)
       setSuccess(true)
+
+      // Reset form
       setFormData({
         amount: '',
         paymentMethodId: '',
@@ -192,7 +204,7 @@ export function WithdrawMoney() {
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
           <p className="text-sm text-gray-600 mb-1">Withdrawal Amount</p>
           <p className="text-3xl font-bold text-brand-green">
-            ${parseFloat(formData.amount).toFixed(2)}
+            ${(successData.amount || 0).toFixed(2)}
           </p>
         </div>
 

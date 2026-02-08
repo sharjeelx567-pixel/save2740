@@ -21,7 +21,8 @@ import { useToast } from '@/components/ui/use-toast'
 import { Loader2, CheckCircle2, AlertCircle, CreditCard, DollarSign } from 'lucide-react'
 
 interface PaymentMethod {
-  id: string
+  _id?: string
+  id?: string
   type: 'card' | 'bank_account'
   last4: string
   brand?: string
@@ -58,9 +59,9 @@ export function AddMoney() {
   useEffect(() => {
     const fetchPaymentMethods = async () => {
       try {
-        const response = await fetch('/api/banking/payment-methods', {
+        const response = await fetch('/api/payment-methods', {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
           },
         })
 
@@ -70,7 +71,7 @@ export function AddMoney() {
           if (data?.[0]) {
             setFormData(prev => ({
               ...prev,
-              paymentMethodId: data[0].id,
+              paymentMethodId: data[0]._id || data[0].id,
             }))
           }
         }
@@ -140,11 +141,11 @@ export function AddMoney() {
     setProcessing(true)
 
     try {
-      const response = await fetch('/api/wallet/add-money', {
+      const response = await fetch('/api/wallet/deposit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
         },
         body: JSON.stringify({
           amount: parseFloat(formData.amount),
@@ -298,13 +299,16 @@ export function AddMoney() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Select a payment method</option>
-              {paymentMethods.map(method => (
-                <option key={method.id} value={method.id}>
-                  {method.type === 'card'
-                    ? `${method.brand} •••• ${method.last4}`
-                    : `${method.bankName} •••• ${method.last4}`}
-                </option>
-              ))}
+              {paymentMethods.map(method => {
+                const methodId = method._id || method.id
+                return (
+                  <option key={methodId} value={methodId}>
+                    {method.type === 'card'
+                      ? `${method.brand || 'Card'} •••• ${method.last4}`
+                      : `${method.bankName || 'Bank'} •••• ${method.last4}`}
+                  </option>
+                )
+              })}
             </select>
             {errors.paymentMethodId && (
               <p className="text-xs text-red-500">{errors.paymentMethodId}</p>

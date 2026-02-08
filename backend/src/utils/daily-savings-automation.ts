@@ -10,8 +10,9 @@
  */
 
 import { Wallet, IWallet } from '../models/wallet.model';
-import User from '../models/User';
+import { User } from '../models/auth.model';
 import { Transaction } from '../models/transaction.model';
+import { Pocket } from '../models/pocket.model';
 import { addNotificationJob, addEmailJob } from './job-queue';
 import { DAILY_SAVINGS_AMOUNT } from '../config/payment-architecture';
 import mongoose from 'mongoose';
@@ -50,8 +51,8 @@ export async function processDailySavingsForAllUsers(): Promise<DailySavingsResu
     try {
         // Get all active users who have opted into daily savings
         const users = await User.find({
-            isActive: true,
-            'preferences.dailySavingsEnabled': { $ne: false }, // Default to true if not set
+            accountStatus: 'active',
+            'preferences.autoDebit.enabled': { $ne: false }, // Default to true if not explicitly disabled
         }).select('_id email firstName');
 
         console.log(`📊 [DAILY SAVINGS] Found ${users.length} eligible users`);
@@ -102,7 +103,7 @@ export async function processDailySavingsForAllUsers(): Promise<DailySavingsResu
 /**
  * Process daily savings for a single user
  */
-async function processDailySavingsForUser(
+export async function processDailySavingsForUser(
     userId: string,
     email: string,
     firstName: string
@@ -163,15 +164,24 @@ async function processDailySavingsForUser(
         // Get daily savings amount (user-specific or default)
         const dailyAmount = wallet.dailySavingAmount || DAILY_SAVINGS_AMOUNT;
 
+        // --- POCKETS INTEGRATION ---
+        const activePockets = await Pocket.find({ userId, status: 'active' }).session(session);
+        let totalPocketContribution = 0;
+        activePockets.forEach(p => {
+            totalPocketContribution += (p.dailyAmount || 0) * (p.multiplier || 1);
+        });
+
+        const totalRequired = dailyAmount + totalPocketContribution;
+
         // Check if sufficient balance
-        if (wallet.availableBalance < dailyAmount) {
+        if (wallet.availableBalance < totalRequired) {
             await session.abortTransaction();
 
             // Send low balance notification
             await addNotificationJob({
                 userId,
                 title: '⚠️ Low Balance Alert',
-                message: `Your wallet balance is too low ($${wallet.availableBalance.toFixed(2)}) to complete today's $${dailyAmount.toFixed(2)} savings. Please add funds to continue your streak!`,
+                message: `Your wallet balance is too low ($${wallet.availableBalance.toFixed(2)}) to complete today's $${totalRequired.toFixed(2)} savings (Baseline: $${dailyAmount.toFixed(2)} + Pockets: $${totalPocketContribution.toFixed(2)}). Please add funds!`,
                 type: 'alert',
             });
 
@@ -179,15 +189,38 @@ async function processDailySavingsForUser(
                 userId,
                 email,
                 status: 'insufficient_funds',
-                message: `Insufficient balance: $${wallet.availableBalance.toFixed(2)} < $${dailyAmount.toFixed(2)}`,
+                message: `Insufficient balance: $${wallet.availableBalance.toFixed(2)} < $${totalRequired.toFixed(2)}`,
             };
         }
 
-        // **CRITICAL: LEDGER-FIRST ALLOCATION** (NO EXTERNAL PAYMENT RAILS)
-        // Move funds from available balance to locked balance (internal transfer)
-        wallet.availableBalance -= dailyAmount;
+        // **CRITICAL: LEDGER-FIRST ALLOCATION**
+        wallet.availableBalance -= totalRequired;
         wallet.locked += dailyAmount;
+        wallet.lockedInPockets = (wallet.lockedInPockets || 0) + totalPocketContribution;
         wallet.lastDailySavingDate = today;
+
+        // Update Pockets
+        for (const pocket of activePockets) {
+            const amount = (pocket.dailyAmount || 0) * (pocket.multiplier || 1);
+            if (amount > 0) {
+                pocket.currentAmount += amount;
+                if (pocket.currentAmount >= pocket.targetAmount) {
+                    pocket.status = 'completed';
+                }
+                await pocket.save({ session });
+
+                // Create transaction for each pocket contribution
+                await Transaction.create([{
+                    userId,
+                    type: 'transfer',
+                    amount: amount,
+                    status: 'completed',
+                    description: `Pocket Savings: ${pocket.name}`,
+                    category: 'savings',
+                    metadata: { pocketId: pocket._id, pocketName: pocket.name }
+                }], { session });
+            }
+        }
 
         // Update streak
         const yesterday = new Date(today);

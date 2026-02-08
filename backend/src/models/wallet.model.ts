@@ -117,7 +117,7 @@ const WalletSchema = new Schema<IWallet>(
 
 // Calculate totalBalance before saving
 WalletSchema.pre<IWallet>("save", function (next) {
-  this.totalBalance = this.balance + this.locked + this.referralEarnings + this.escrowBalance;
+  this.totalBalance = (this.balance || 0) + (this.locked || 0) + (this.lockedInPockets || 0) + (this.referralEarnings || 0) + (this.escrowBalance || 0);
   next();
 });
 

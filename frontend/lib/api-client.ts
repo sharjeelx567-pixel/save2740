@@ -100,12 +100,15 @@ class ApiClient {
       const id = setTimeout(() => controller.abort(), this.timeout);
 
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options, // Allow custom options but prioritize internal defaults
         method: "GET",
-        headers: this.getHeaders(),
-        credentials: 'include', // Include cookies in request
-        cache: 'no-store', // CRITICAL: Prevent 304 responses
+        headers: {
+          ...this.getHeaders(),
+          ...options?.headers,
+        },
+        credentials: 'include', // FORCE cookies
+        cache: 'no-store', // FORCE no caching
         signal: options?.signal || controller.signal,
-        ...options,
       });
       clearTimeout(id);
 
@@ -176,13 +179,16 @@ class ApiClient {
       const id = setTimeout(() => controller.abort(), this.timeout);
 
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options, // Allow custom options but prioritize internal defaults
         method: "POST",
-        headers: this.getHeaders(),
+        headers: {
+          ...this.getHeaders(),
+          ...options?.headers,
+        },
         body: body ? JSON.stringify(body) : undefined,
-        credentials: 'include', // Include cookies in request
-        cache: 'no-store', // CRITICAL: Prevent 304 responses
+        credentials: 'include', // FORCE cookies
+        cache: 'no-store', // FORCE no caching
         signal: options?.signal || controller.signal,
-        ...options,
       });
       clearTimeout(id);
 
@@ -253,13 +259,16 @@ class ApiClient {
       const id = setTimeout(() => controller.abort(), this.timeout);
 
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options, // Allow custom options but prioritize internal defaults
         method: "PUT",
-        headers: this.getHeaders(),
+        headers: {
+          ...this.getHeaders(),
+          ...options?.headers,
+        },
         body: body ? JSON.stringify(body) : undefined,
-        credentials: 'include',
-        cache: 'no-store',
+        credentials: 'include', // FORCE cookies
+        cache: 'no-store', // FORCE no caching
         signal: options?.signal || controller.signal,
-        ...options,
       });
       clearTimeout(id);
 
@@ -298,12 +307,15 @@ class ApiClient {
       const id = setTimeout(() => controller.abort(), this.timeout);
 
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options, // Allow custom options but prioritize internal defaults
         method: "DELETE",
-        headers: this.getHeaders(),
-        credentials: 'include',
-        cache: 'no-store',
+        headers: {
+          ...this.getHeaders(),
+          ...options?.headers,
+        },
+        credentials: 'include', // FORCE cookies
+        cache: 'no-store', // FORCE no caching
         signal: options?.signal || controller.signal,
-        ...options,
       });
       clearTimeout(id);
 
