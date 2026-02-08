@@ -11,8 +11,8 @@ export const tokenManager = {
   set: (token: string) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('admin_token', token)
-      // Set cookie for middleware access
-      document.cookie = `admin_token=${token}; path=/; max-age=86400; SameSite=Strict`
+      // Set cookie for middleware access - 7 days to match refresh token, Lax for external links
+      document.cookie = `admin_token=${token}; path=/; max-age=604800; SameSite=Lax`
     }
   },
   remove: () => {
@@ -33,24 +33,39 @@ export class APIError extends Error {
 }
 
 // Request helper
+// Flag to prevent multiple concurrent refreshes
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = tokenManager.get()
+  const token = tokenManager.get();
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
     'Pragma': 'no-cache',
     ...(options.headers as Record<string, string>),
-  }
+  };
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const url = `${API_BASE}${endpoint}`
+  const url = `${API_BASE}${endpoint}`;
 
   try {
     const response = await fetch(url, {
@@ -58,34 +73,94 @@ async function request<T>(
       headers,
       cache: 'no-store', // CRITICAL: Prevent 304 responses
       credentials: 'include',
-    })
+    });
 
-    // Handle 401 - redirect to login
+    // Handle 401 - Attempt Refresh
     if (response.status === 401) {
-      tokenManager.remove()
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login'
+      // If we are already refreshing, queue this request
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(newToken => {
+          // Retry with new token
+          if (newToken) {
+            return request<T>(endpoint, {
+              ...options,
+              headers: {
+                ...options.headers,
+                'Authorization': `Bearer ${newToken}`
+              }
+            });
+          }
+          throw new APIError(401, 'Unauthorized');
+        });
       }
-      throw new APIError(401, 'Unauthorized')
+
+      // Start Refresh
+      if (!isRefreshing && !endpoint.includes('/refresh')) {
+        isRefreshing = true;
+        try {
+          console.log('🔄 Access token expired, attempting refresh...');
+          const refreshResponse = await fetch(`${API_BASE}/api/admin/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // Send HttpOnly cookie
+          });
+
+          const refreshData = await refreshResponse.json();
+
+          if (refreshData.success && refreshData.data?.accessToken) {
+            console.log('✅ Refresh successful');
+            const newToken = refreshData.data.accessToken;
+            tokenManager.set(newToken);
+            processQueue(null, newToken);
+
+            // Retry original request
+            return request<T>(endpoint, {
+              ...options,
+              // recursive call will pick up new token from tokenManager.get() or specifically override
+            });
+          } else {
+            console.log('❌ Refresh failed');
+            throw new Error('Refresh failed');
+          }
+        } catch (refreshError) {
+          processQueue(refreshError, null);
+          tokenManager.remove();
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+          throw new APIError(401, 'Session expired. Please login again.');
+        } finally {
+          isRefreshing = false;
+        }
+      }
+
+      // If we failed refresh or this WAS a refresh attempt
+      tokenManager.remove();
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+      throw new APIError(401, 'Unauthorized');
     }
 
     // Parse response
-    const data = await response.json().catch(() => ({}))
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
       throw new APIError(
         response.status,
         data.message || data.error || 'Request failed',
         data
-      )
+      );
     }
 
-    return data
+    return data;
   } catch (error) {
     if (error instanceof APIError) {
-      throw error
+      throw error;
     }
-    throw new APIError(500, 'Network error')
+    throw new APIError(500, 'Network error');
   }
 }
 
@@ -124,4 +199,8 @@ export const authAPI = {
     }),
 
   me: () => api.get<{ success: boolean; data: any }>('/api/admin/auth/me'),
+
+  refresh: () => api.post<{ success: boolean; data: { accessToken: string } }>('/api/admin/auth/refresh'),
+
+  logout: () => api.post<{ success: boolean }>('/api/admin/auth/logout'),
 }

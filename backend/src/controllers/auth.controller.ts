@@ -92,7 +92,7 @@ export const signup = async (req: Request, res: Response) => {
             // Fraud detection
             const referralHistory = await Referral.find({}).lean();
             const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
-            
+
             const attempt: ReferralAttempt = {
                 referrerId: referrerId,
                 refereeId: user._id.toString(),
@@ -109,7 +109,7 @@ export const signup = async (req: Request, res: Response) => {
                 // Delete the just-created user and wallet
                 await User.deleteOne({ _id: user._id });
                 await Wallet.deleteOne({ userId: user._id.toString() });
-                
+
                 return res.status(400).json({
                     success: false,
                     error: 'Referral validation failed',
@@ -245,12 +245,12 @@ export const getTestOTP = async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, error: 'OTP has expired' });
         }
 
-        res.json({ 
-            success: true, 
-            data: { 
+        res.json({
+            success: true,
+            data: {
                 otp: user.resetPasswordToken,
-                expiresAt: user.resetPasswordExpires 
-            } 
+                expiresAt: user.resetPasswordExpires
+            }
         });
     } catch (error) {
         console.error('Get test OTP error:', error);
@@ -383,7 +383,13 @@ export const logout = async (req: Request, res: Response) => {
             await revokeRefreshToken(refreshToken, req.ip || 'unknown');
         }
 
-        res.clearCookie('refreshToken');
+        const isProduction = process.env.NODE_ENV === 'production';
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'none' : 'lax', // Must match the original setting
+            path: '/',
+        });
         res.json({ success: true, message: 'Logged out successfully' });
     } catch (error) {
         res.status(500).json({ success: false, error: 'Logout failed' });
@@ -412,7 +418,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
             // Send OTP email
             await sendPasswordResetEmail(email, otp);
-            
+
             // Log OTP for development (remove in production)
             console.log(`🔑 [PASSWORD RESET OTP] Email: ${email}, OTP: ${otp}`);
         }
@@ -439,7 +445,7 @@ export const resetPassword = async (req: Request, res: Response) => {
             resetPasswordToken: resetCode,
             resetPasswordExpires: { $gt: new Date() }
         };
-        
+
         if (email) {
             query.email = email.toLowerCase();
         }

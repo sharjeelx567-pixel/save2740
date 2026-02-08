@@ -42,11 +42,17 @@ export function middleware(request: NextRequest) {
     )
 
     // Redirect unauthenticated users to login
+    // Redirect unauthenticated users to login
+    // TEMPORARY FIX: Disable middleware redirect because HttpOnly cookie is on a different domain (backend) 
+    // and cannot be read by middleware on frontend domain.
+    // Auth check will happen client-side in AuthContext.
+    /*
     if (isProtectedPath && !hasAuthToken) {
         const url = new URL('/auth/login', request.url)
         url.searchParams.set('callbackUrl', pathname)
         return NextResponse.redirect(url)
     }
+    */
 
     // Redirect authenticated users away from auth pages to dashboard
     // Exception: Allow access to signup page if a referral code is present (user might want to use the referral)

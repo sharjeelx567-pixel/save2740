@@ -16,7 +16,7 @@ interface AuthContextType {
   user: AdminUser | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -34,31 +34,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuth = async () => {
     try {
       console.log('🔐 Checking auth...')
-      const token = tokenManager.get()
-      
+      let token = tokenManager.get()
+
+      // If no token, attempt to refresh first
       if (!token) {
-        console.log('❌ No token found')
-        setLoading(false)
-        return
+        console.log('⚠️ No access token found, attempting to use refresh token...')
+        try {
+          const refreshResponse = await authAPI.refresh()
+          if (refreshResponse.success && refreshResponse.data?.accessToken) {
+            console.log('✅ Initial refresh successful')
+            tokenManager.set(refreshResponse.data.accessToken)
+            token = refreshResponse.data.accessToken
+          }
+        } catch (refreshError) {
+          console.log('❌ Initial refresh failed')
+          // Don't setup user, just finish loading. 
+          // If on protected route, Auth components may handle redirect, 
+          // or api.ts may have already triggered redirect.
+          setLoading(false)
+          return
+        }
       }
 
-      console.log('✅ Token found, calling /api/admin/auth/me')
-      const response = await authAPI.me()
-      console.log('📥 /me response:', response)
-      
-      if (response.success && response.data) {
-        console.log('✅ Setting user:', response.data)
-        setUser(response.data)
-        
-        // Don't initialize FCM on checkAuth - it's causing issues
-        // Will only init on explicit login
-      } else {
-        console.log('❌ /me response not successful')
-        tokenManager.remove()
+      if (token) {
+        console.log('✅ Token available, validating user...')
+        const response = await authAPI.me()
+        console.log('📥 /me response:', response)
+
+        if (response.success && response.data) {
+          console.log('✅ Setting user:', response.data)
+          setUser(response.data)
+        } else {
+          console.log('❌ /me response not successful')
+          tokenManager.remove()
+          setUser(null)
+        }
       }
     } catch (error) {
       console.error('❌ checkAuth error:', error)
       tokenManager.remove()
+      setUser(null)
     } finally {
       setLoading(false)
       console.log('✅ Auth check complete')
@@ -70,25 +85,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (response.success && response.data) {
       // Save token first
       tokenManager.set(response.data.accessToken)
-      
+
       // Set user in state
       setUser(response.data.user)
-      
+
       console.log('✅ Login successful! User:', response.data.user)
       console.log('🔄 Redirecting to dashboard with window.location...')
-      
+
       // Skip FCM initialization - it's causing redirect issues
       // Can be enabled later when properly configured
-      
+
       // Use window.location.href for reliable redirect
       window.location.href = '/'
     }
   }
 
-  const logout = () => {
-    tokenManager.remove()
-    setUser(null)
-    router.push('/login')
+  const logout = async () => {
+    try {
+      await authAPI.logout()
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      tokenManager.remove()
+      setUser(null)
+      router.push('/login')
+    }
   }
 
   return (

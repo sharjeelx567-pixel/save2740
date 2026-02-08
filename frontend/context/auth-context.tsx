@@ -54,41 +54,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const session = JSON.parse(storedSession);
           const user = JSON.parse(storedUser);
 
-          // Check if session is still valid
-          // Temporarily disabled strict expiry check to prevent auto-logout issues
-          // if (new Date(session.expiresAt) > new Date()) {
           setState({
             isAuthenticated: true,
             user,
             session,
-            loading: false,
+            loading: false, // Will be set to false finally
             error: null,
           });
 
-          // Initialize FCM for push notifications on app load
-          if (fcmService.isSupported()) {
-            fcmService.initialize().catch(err => {
-              console.warn('FCM initialization failed:', err);
-            });
-          }
-          /* } else {
-            console.warn("Session expired based on client clock", session.expiresAt);
-            // Session expired, clear storage
-            localStorage.removeItem("session");
-            localStorage.removeItem("user");
-            setState({
-              isAuthenticated: false,
-              user: null,
-              session: null,
-              loading: false,
-              error: null,
-            });
-          } */
+          // Check if token is valid or refresh needed?
+          // Ideally we accept the stored session, but maybe verify it.
+          // For now, trust local storage to avoid blocking UI.
+
         } else {
-          setState((prev: AuthState) => ({ ...prev, loading: false }));
+          // No local session? Try to restore from HttpOnly cookie
+          console.log("No local session, attempting to restore from cookie...");
+          await refreshSession();
+          return; // refreshSession handles state update
         }
       } catch (error) {
+        console.error("Auth initialization error:", error);
         setState((prev: AuthState) => ({ ...prev, loading: false }));
+      }
+
+      // If we fall through here (e.g. valid local session), ensure loading is false
+      setState((prev: AuthState) => ({ ...prev, loading: false }));
+
+      // Initialize FCM
+      if (fcmService.isSupported()) {
+        fcmService.initialize().catch(console.warn);
       }
     };
 
@@ -98,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = useCallback(async (credentials: LoginPayload) => {
     setState((prev: AuthState) => ({ ...prev, loading: true, error: null }));
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://save-2740-backend.vercel.app";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://save2740-api.vercel.app";
       const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -162,7 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = useCallback(async () => {
     setState((prev: AuthState) => ({ ...prev, loading: true }));
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://save-2740-backend.vercel.app";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://save2740-api.vercel.app";
       await fetch(`${apiUrl}/api/auth/logout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -395,46 +389,99 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const refreshSession = useCallback(async () => {
-    if (!state.session) return;
-
+    setState((prev) => ({ ...prev, loading: true }));
     try {
-      const response = await fetch("/api/auth/refresh-session", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://save-2740-backend.vercel.app";
+      // 1. Call Refresh Endpoint
+      const response = await fetch(`${apiUrl}/api/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: state.session.refreshToken }),
+        // No body needed, cookie is sent automatically if credentials included
+        credentials: "include",
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || !data.success) {
         throw new Error(data.error || "Session refresh failed");
       }
 
-      const { session } = data.data;
+      const { accessToken, refreshToken } = data.data;
 
+      // 2. We have new tokens, but we need the USER object securely.
+      // Call /api/auth/me with new token
+      // Wait for user fetch
+      const meResponse = await fetch(`${apiUrl}/api/auth/me`, {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      const meData = await meResponse.json();
+      if (!meResponse.ok || !meData.success) {
+        throw new Error("Failed to fetch user profile");
+      }
+
+      const user = meData.data;
+
+      // 3. Construct Session
+      const session: Session = {
+        id: 'restored',
+        userId: user.id,
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      };
+
+      // 4. Update Storage & State
       localStorage.setItem("session", JSON.stringify(session));
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("userId", user.id);
+      localStorage.setItem("token", accessToken);
 
       setState((prev: AuthState) => ({
         ...prev,
+        isAuthenticated: true,
+        user,
         session,
+        loading: false,
+        error: null
       }));
+
     } catch (error) {
-      // If refresh fails, logout user
-      await logout();
+      console.warn("Session restore failed:", error);
+      // Don't logout if we were just trying to restore - just fail silently to unauthenticated state
+      // unless we were explicitly calling refresh
+      localStorage.removeItem("session");
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+
       setState((prev: AuthState) => ({
         ...prev,
-        error: "Session expired. Please login again.",
+        isAuthenticated: false,
+        user: null,
+        session: null,
+        loading: false,
+        // Only set error if it wasn't a silent restore attempt? 
+        // For now, let's keep error null to avoid showing "session expired" on public pages
+        error: null,
       }));
     }
-  }, [state.session, logout]);
+  }, []);
 
   const checkAccountStatus = useCallback(async () => {
     if (!state.user) return;
 
     try {
-      const response = await fetch(`/api/auth/check-account-status/${state.user.id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://save2740-api.vercel.app";
+      // Use /api/auth/me to check status as specific endpoint might not exist
+      const response = await fetch(`${apiUrl}/api/auth/me`, {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Authorization": `Bearer ${state.session?.accessToken}`,
+          "Content-Type": "application/json"
+        },
       });
 
       const data = await response.json();
