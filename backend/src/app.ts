@@ -164,7 +164,11 @@ app.use(cors({
         if (!origin) return callback(null, true);
 
         // Check allowed origins
-        if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.some(o => o && origin.startsWith(o))) {
+        const isAllowed = allowedOrigins.includes(origin) ||
+            allowedOrigins.some(o => o && origin.startsWith(o)) ||
+            /\.vercel\.app$/.test(origin); // Allow ANY vercel app (preview/prod)
+
+        if (isAllowed) {
             callback(null, true);
         } else {
             console.log('BLOCKED CORS:', origin); // Log blocked origins for debugging
