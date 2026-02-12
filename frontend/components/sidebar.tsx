@@ -22,6 +22,40 @@ import { LogoutModal } from "@/components/logout-modal"
 import Image from "next/image"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useProfile } from "@/hooks/use-profile"
+import { useUsefulLinks } from "@/hooks/use-useful-links"
+
+// Useful Links from CMS; fallback to static list if API returns none
+function UsefulLinksBlock({ onClose }: { onClose?: () => void }) {
+  const { links, loading } = useUsefulLinks()
+  const fallback = [
+    { title: "Privacy Policy", slug: "privacy-policy" },
+    { title: "Terms & Conditions", slug: "terms-conditions" },
+    { title: "Savings Challenge Disclaimer", slug: "savings-challenge-disclaimer" },
+    { title: "Subscription & Refund Policy", slug: "subscription-refund-policy" },
+    { title: "Affiliate / Referral Policy", slug: "affiliate-referral-policy" },
+  ]
+  const display = !loading && links.length > 0 ? links : fallback
+  return (
+    <div className="pt-4 mt-4 border-t border-slate-100">
+      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider px-2 sm:px-3 md:px-4 mb-2">
+        Useful Links
+      </h3>
+      <div className="space-y-1">
+        {display.map((link) => (
+          <Link
+            key={link.slug}
+            href={`/policy/${link.slug}`}
+            onClick={onClose}
+            prefetch={true}
+            className="flex items-center px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-600 hover:text-brand-green transition-colors"
+          >
+            {link.title}
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 // Custom Dashboard Icon Component
 const DashboardIcon = ({ className }: { className?: string }) => (
@@ -253,54 +287,8 @@ export function Sidebar({ onClose }: SidebarProps) {
             )
           })}
 
-          {/* Useful Links Section */}
-          <div className="pt-4 mt-4 border-t border-slate-100">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider px-2 sm:px-3 md:px-4 mb-2">
-              Useful Links
-            </h3>
-            <div className="space-y-1">
-              <Link
-                href="/privacy-policy"
-                onClick={onClose}
-                prefetch={true}
-                className="flex items-center px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-600 hover:text-brand-green transition-colors"
-              >
-                Privacy Policy
-              </Link>
-              <Link
-                href="/terms-conditions"
-                onClick={onClose}
-                prefetch={true}
-                className="flex items-center px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-600 hover:text-brand-green transition-colors"
-              >
-                Terms & Conditions
-              </Link>
-              <Link
-                href="/savings-challenge-disclaimer"
-                onClick={onClose}
-                prefetch={true}
-                className="flex items-center px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-600 hover:text-brand-green transition-colors"
-              >
-                Savings Challenge Disclaimer
-              </Link>
-              <Link
-                href="/subscription-refund-policy"
-                onClick={onClose}
-                prefetch={true}
-                className="flex items-center px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-600 hover:text-brand-green transition-colors"
-              >
-                Subscription & Refund Policy
-              </Link>
-              <Link
-                href="/affiliate-referral-policy"
-                onClick={onClose}
-                prefetch={true}
-                className="flex items-center px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-600 hover:text-brand-green transition-colors"
-              >
-                Affiliate / Referral Policy
-              </Link>
-            </div>
-          </div>
+          {/* Useful Links Section - from CMS (admin-editable) */}
+          <UsefulLinksBlock onClose={onClose} />
         </nav>
 
         {/* Scroll Down Button */}
@@ -341,10 +329,16 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Footer Section - Fixed at Bottom */}
       <div className="flex-shrink-0 p-3 sm:p-4 border-t border-slate-100 space-y-2 sm:space-y-3">
         <div className="space-y-2 sm:space-y-3">
-          <Link href="/profile" onClick={onClose} prefetch={true} className="flex-1 min-w-0 block">
+          <Link
+            href="/profile"
+            onClick={onClose}
+            prefetch={true}
+            className="flex-1 min-w-0 block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:ring-offset-2 rounded-xl"
+            aria-label={`Account settings. Signed in as ${user?.firstName ?? ''} ${user?.lastName ?? ''}. Member type: ${user?.financialRoleLabel ?? 'Inactive'}.`}
+          >
             <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm hover:border-emerald-100 transition-all cursor-pointer group">
-              <Avatar className="h-10 w-10 min-w-[2.5rem] border-2 border-white shadow-sm ring-1 ring-slate-100 shrink-0">
-                <AvatarImage src={user?.profileImage || user?.profilePicture?.url || "/placeholder-user.jpg"} alt={`${user?.firstName} ${user?.lastName}`} className="object-cover" />
+              <Avatar className="h-10 w-10 min-w-[2.5rem] border-2 border-white shadow-sm ring-1 ring-slate-100 shrink-0" aria-hidden="true">
+                <AvatarImage src={user?.profileImage || user?.profilePicture?.url || "/placeholder-user.jpg"} alt="" className="object-cover" />
                 <AvatarFallback className="bg-brand-green text-white font-medium">
                   {user?.firstName?.charAt(0) || "U"}
                 </AvatarFallback>
@@ -354,10 +348,10 @@ export function Sidebar({ onClose }: SidebarProps) {
                   <p className="font-bold text-xs sm:text-sm text-emerald-500 truncate leading-snug">
                     {user?.firstName ? `${user.firstName} ${user.lastName}` : 'Loading...'}
                   </p>
-                  <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 transition-colors shrink-0 mt-1" />
+                  <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 transition-colors shrink-0 mt-1" aria-hidden="true" />
                 </div>
-                <p className="text-[10px] sm:text-xs font-medium text-[#7C8DB5] truncate mt-0.5">
-                  {user?.accountTier ? `${user.accountTier.charAt(0).toUpperCase() + user.accountTier.slice(1)} member` : 'Basic member'}
+                <p className="text-[10px] sm:text-xs font-medium text-[#7C8DB5] truncate mt-0.5" title={user?.financialRoleLabel ? `${user.financialRoleLabel} – Based on your savings and group activity` : undefined}>
+                  {user?.financialRoleLabel ?? 'Inactive'}
                 </p>
               </div>
             </div>

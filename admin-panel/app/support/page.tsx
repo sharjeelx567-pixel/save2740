@@ -11,6 +11,7 @@ import Select from '@/components/ui/Select'
 import { MessageSquare, Clock, CheckCircle, AlertCircle, Eye } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import Link from 'next/link'
+import { api } from '@/lib/api'
 
 export default function SupportPage() {
   const [statusFilter, setStatusFilter] = useState('all')
@@ -27,25 +28,17 @@ export default function SupportPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
-
       // Fetch Stats
-      const statsRes = await fetch('http://localhost:5000/api/admin/support-tickets/stats', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      const statsData = await statsRes.json()
-      if (statsData.success) {
-        setStats(statsData.data)
+      const statsRes = await api.get<{ success: boolean; data: any }>('/api/admin/support-tickets/stats')
+      if (statsRes.success) {
+        setStats(statsRes.data)
       }
 
       // Fetch Tickets
       const query = statusFilter !== 'all' ? `?status=${statusFilter}` : ''
-      const ticketsRes = await fetch(`http://localhost:5000/api/admin/support-tickets${query}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      const ticketsData = await ticketsRes.json()
-      if (ticketsData.success) {
-        setTickets(ticketsData.data.tickets)
+      const ticketsRes = await api.get<{ success: boolean; data: { tickets: any[] } }>(`/api/admin/support-tickets${query}`)
+      if (ticketsRes.success) {
+        setTickets(ticketsRes.data.tickets)
       }
     } catch (error) {
       console.error('Failed to fetch support data:', error)
@@ -83,7 +76,7 @@ export default function SupportPage() {
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card hover>

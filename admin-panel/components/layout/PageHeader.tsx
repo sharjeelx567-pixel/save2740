@@ -15,21 +15,21 @@ interface PageHeaderProps {
 
 export default function PageHeader({ title, description, breadcrumbs, action }: PageHeaderProps) {
   return (
-    <div className="bg-white border-b border-gray-200 px-6 py-6">
+    <div className="bg-white border-b border-gray-200 px-3 py-3 sm:px-4 sm:py-4">
       {breadcrumbs && (
-        <div className="mb-3">
+        <div className="mb-2 sm:mb-3 overflow-x-auto">
           <Breadcrumbs items={breadcrumbs} />
         </div>
       )}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{title}</h1>
           {description && (
-            <p className="mt-1 text-sm text-gray-500">{description}</p>
+            <p className="mt-1 text-xs sm:text-sm text-gray-500 line-clamp-2">{description}</p>
           )}
         </div>
         {action && (
-          <div className="ml-4">
+          <div className="flex-shrink-0 sm:ml-4">
             {action}
           </div>
         )}

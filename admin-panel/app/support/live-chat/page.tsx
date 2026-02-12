@@ -63,7 +63,7 @@ function LiveChatContent() {
                 userEmail = userDetail.email;
             }
             const profileImageUrl = userDetail?.profileImage
-                ? (userDetail.profileImage.startsWith('http') ? userDetail.profileImage : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${userDetail.profileImage.startsWith('/') ? '' : '/'}${userDetail.profileImage}`)
+                ? (userDetail.profileImage.startsWith('http') ? userDetail.profileImage : `${process.env.NEXT_PUBLIC_API_URL || ''}${userDetail.profileImage.startsWith('/') ? '' : '/'}${userDetail.profileImage}`)
                 : null;
 
             if (!userDetail) {

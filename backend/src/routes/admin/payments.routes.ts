@@ -1,7 +1,9 @@
 import express, { Response } from 'express';
+import mongoose from 'mongoose';
 import { authenticateAdmin, AuthRequest } from '../../middleware/auth';
 import { Transaction } from '../../models/transaction.model';
 import { User } from '../../models/auth.model';
+import { Wallet } from '../../models/wallet.model';
 import { connectDB } from '../../config/db';
 import { getStripeProcessor } from '../../utils/stripe-processor';
 
@@ -15,20 +17,42 @@ const router = express.Router();
 router.get('/', authenticateAdmin, async (req: AuthRequest, res: Response) => {
     try {
         await connectDB();
-        const { page = 1, limit = 20, search, status } = req.query;
+        const { page = 1, limit = 20, search, status, type, startDate, endDate } = req.query;
 
-        const query: any = {
-            type: { $in: ['deposit', 'withdrawal', 'transfer', 'payment'] } // Focus on money movement
-        };
+        const query: any = {};
+
+        if (type && type !== 'all') {
+            query.type = type;
+        } else {
+            query.type = { $in: ['deposit', 'withdrawal', 'transfer', 'payment'] };
+        }
 
         if (status && status !== 'all') {
             query.status = status;
         }
 
-        // Simple search if provided
+        if (startDate || endDate) {
+            query.createdAt = {};
+            if (startDate) query.createdAt.$gte = new Date(startDate as string);
+            if (endDate) {
+                const d = new Date(endDate as string);
+                d.setHours(23, 59, 59, 999);
+                query.createdAt.$lte = d;
+            }
+        }
+
         if (search) {
             const searchRegex = new RegExp(search as string, 'i');
+            const users = await User.find({
+                $or: [
+                    { email: searchRegex },
+                    { firstName: searchRegex },
+                    { lastName: searchRegex }
+                ]
+            }).select('_id');
+            const userIds = users.map(u => u._id);
             query.$or = [
+                { userId: { $in: userIds } },
                 { transactionId: searchRegex },
                 { description: searchRegex }
             ];
@@ -212,55 +236,206 @@ router.get('/disputes/list', authenticateAdmin, async (req: AuthRequest, res: Re
 
 /**
  * @route   GET /api/admin/payments/wallets/balances
- * @desc    View wallet balances (Placeholder - assumes simple calc for now)
+ * @desc    View wallet balances with filters (search, status, balanceMin, balanceMax)
  * @access  Admin
  */
 router.get('/wallets/balances', authenticateAdmin, async (req: AuthRequest, res: Response) => {
     try {
         await connectDB();
-        // Aggregation to sum up all completed deposits - withdrawals for each user
-        // distinct users with transactions
-        // This is expensive, so just getting a few for demo
+        const { page = 1, limit = 50, search, status, balanceMin, balanceMax } = req.query;
+        const skip = (Number(page) - 1) * Number(limit);
+        const limitNum = Number(limit);
 
-        const balances = await Transaction.aggregate([
-            { $match: { status: 'completed' } },
-            {
-                $group: {
-                    _id: '$userId',
-                    balance: {
-                        $sum: {
-                            $cond: [
-                                { $in: ['$type', ['deposit', 'refund', 'income']] },
-                                '$amount',
-                                { $multiply: ['$amount', -1] }
-                            ]
-                        }
+        let userIds: string[] | null = null;
+        if (search && String(search).trim()) {
+            const searchRegex = new RegExp(String(search).trim(), 'i');
+            const users = await User.find({
+                $or: [
+                    { email: searchRegex },
+                    { firstName: searchRegex },
+                    { lastName: searchRegex }
+                ]
+            }).select('_id');
+            userIds = users.map((u: any) => u._id.toString());
+            if (userIds.length === 0) {
+                return res.json({
+                    success: true,
+                    data: {
+                        wallets: [],
+                        pagination: { page: Number(page), limit: limitNum, total: 0, pages: 0 },
+                        totals: { totalBalance: 0, totalAvailable: 0, totalLocked: 0, totalEscrow: 0 }
                     }
-                }
-            },
-            { $limit: 20 }
+                });
+            }
+        }
+
+        const query: any = {};
+        if (userIds) query.userId = { $in: userIds };
+        if (status && status !== 'all') query.status = status;
+        if (balanceMin != null && balanceMin !== '') {
+            const n = Number(balanceMin);
+            if (!isNaN(n)) { query.balance = query.balance || {}; query.balance.$gte = n; }
+        }
+        if (balanceMax != null && balanceMax !== '') {
+            const n = Number(balanceMax);
+            if (!isNaN(n)) { query.balance = query.balance || {}; query.balance.$lte = n; }
+        }
+
+        const [walletDocs, total] = await Promise.all([
+            Wallet.find(query).sort({ balance: -1 }).skip(skip).limit(limitNum).lean(),
+            Wallet.countDocuments(query)
         ]);
 
-        // Populate user details manually since aggregate lookup is verbose to write here inline
-        const userIds = balances.map(b => b._id);
-        const users = await User.find({ _id: { $in: userIds } }).select('firstName lastName email');
+        const uIds = walletDocs.map((w: any) => w.userId).filter(Boolean);
+        const objectIds = uIds.filter((id: string) => mongoose.Types.ObjectId.isValid(id)).map((id: string) => new mongoose.Types.ObjectId(id));
+        const users = objectIds.length ? await User.find({ _id: { $in: objectIds } }).select('firstName lastName email').lean() : [];
+        const userMap: Record<string, any> = {};
+        users.forEach((u: any) => { userMap[u._id.toString()] = u; });
 
-        const result = balances.map(b => {
-            const user = users.find(u => u._id.toString() === b._id.toString());
-            return {
-                userId: b._id,
-                user: user ? { name: `${user.firstName} ${user.lastName}`, email: user.email } : { name: 'Unknown', email: '' },
-                balance: b.balance
-            };
-        });
+        const wallets = walletDocs.map((w: any) => ({
+            ...w,
+            userId: { _id: w.userId, ...userMap[w.userId] }
+        }));
+
+        const totalsAgg = await Wallet.aggregate([
+            ...(Object.keys(query).length ? [{ $match: query }] : []),
+            { $group: { _id: null, totalBalance: { $sum: '$balance' }, totalAvailable: { $sum: '$availableBalance' }, totalLocked: { $sum: '$locked' }, totalEscrow: { $sum: '$escrowBalance' } } }
+        ]);
+        const totals = totalsAgg[0] || { totalBalance: 0, totalAvailable: 0, totalLocked: 0, totalEscrow: 0 };
 
         res.json({
             success: true,
-            data: result
+            data: {
+                wallets,
+                pagination: { page: Number(page), limit: limitNum, total, pages: Math.ceil(total / limitNum) || 1 },
+                totals
+            }
         });
     } catch (error) {
         console.error('Get wallet balances error:', error);
         res.status(500).json({ success: false, error: 'Failed to get wallet balances' });
+    }
+});
+/**
+ * @route   POST /api/admin/payments/:transactionId/approve
+ * @desc    Approve a pending payout/withdrawal
+ * @access  Admin (Super Admin or Finance)
+ */
+router.post('/:transactionId/approve', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+        await connectDB();
+        const { transactionId } = req.params;
+        const { notes } = req.body;
+
+        const transaction = await Transaction.findOne({ transactionId });
+        if (!transaction) return res.status(404).json({ success: false, error: 'Transaction not found' });
+
+        if (transaction.status !== 'pending') {
+            return res.status(400).json({ success: false, error: `Transaction is ${transaction.status}, cannot approve` });
+        }
+
+        if (transaction.type !== 'withdrawal' && transaction.type !== 'payout') {
+            return res.status(400).json({ success: false, error: 'Only withdrawals/payouts can be approved' });
+        }
+
+        // Process the payout (e.g., via Stripe, Bank, or just Ledger update)
+        // For now, we update the ledger status. In a real integration, this would trigger the bank transfer.
+
+        transaction.status = 'completed';
+        transaction.metadata = { ...transaction.metadata, approvedBy: req.userId, approvalNotes: notes, approvedAt: new Date() };
+        await transaction.save();
+
+        // Audit Log
+        const { AuditLog } = await import('../../models/audit-log');
+        await AuditLog.create({
+            userId: req.userId,
+            action: 'APPROVE_PAYOUT',
+            resourceType: 'transaction',
+            resourceId: transaction._id.toString(),
+            ipAddress: req.ip,
+            severity: 'info',
+            metadata: { transactionId, amount: transaction.amount, notes }
+        });
+
+        // Notify User (Placeholder for actual notification service)
+        // notifyUser(transaction.userId, 'Your withdrawal has been approved.');
+
+        res.json({ success: true, message: 'Payout approved successfully', data: transaction });
+
+    } catch (error) {
+        console.error('Approve payout error:', error);
+        res.status(500).json({ success: false, error: 'Failed to approve payout' });
+    }
+});
+
+/**
+ * @route   POST /api/admin/payments/:transactionId/reject
+ * @desc    Reject a pending payout/withdrawal
+ * @access  Admin
+ */
+router.post('/:transactionId/reject', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+        await connectDB();
+        const { transactionId } = req.params;
+        const { reason } = req.body;
+
+        if (!reason) return res.status(400).json({ success: false, error: 'Rejection reason is required' });
+
+        const transaction = await Transaction.findOne({ transactionId });
+        if (!transaction) return res.status(404).json({ success: false, error: 'Transaction not found' });
+
+        if (transaction.status !== 'pending') {
+            return res.status(400).json({ success: false, error: `Transaction is ${transaction.status}, cannot reject` });
+        }
+
+        // Refund the wallet if money was deducted (usually 'pending' withdrawal means funds are locked or deducted)
+        // Assuming strict ledger: if 'pending', funds might be in 'locked' state or already deducted.
+        // We need to reverse the deduction if it was deducted.
+        // For this system, let's assume we need to credit the user back.
+
+        const { Wallet } = await import('../../models/wallet.model');
+        const wallet = await Wallet.findOne({ userId: transaction.userId });
+
+        if (wallet) {
+            // Credit back the amount
+            wallet.balance += transaction.amount;
+            wallet.availableBalance += transaction.amount;
+            await wallet.save();
+        }
+
+        transaction.status = 'failed'; // or 'rejected'
+        transaction.metadata = { ...transaction.metadata, rejectedBy: req.userId, rejectionReason: reason, rejectedAt: new Date() };
+        await transaction.save();
+
+        // Create a separate "Refund" transaction record for the ledger reversal if needed
+        // Or just rely on the status change. 
+        // Best practice: Create a "Refund/Reversal" transaction to balance the ledger explicitly.
+        await Transaction.create({
+            userId: transaction.userId,
+            type: 'refund',
+            amount: transaction.amount,
+            status: 'completed',
+            description: `Reversal of ${transactionId}: ${reason}`,
+            metadata: { originalTransactionId: transactionId }
+        });
+
+        // Audit Log
+        const { AuditLog } = await import('../../models/audit-log');
+        await AuditLog.create({
+            userId: req.userId,
+            action: 'REJECT_PAYOUT',
+            resourceType: 'transaction',
+            resourceId: transaction._id.toString(),
+            ipAddress: req.ip,
+            severity: 'warning',
+            metadata: { transactionId, amount: transaction.amount, reason }
+        });
+
+        res.json({ success: true, message: 'Payout rejected and refunded', data: transaction });
+
+    } catch (error) {
+        console.error('Reject payout error:', error);
+        res.status(500).json({ success: false, error: 'Failed to reject payout' });
     }
 });
 

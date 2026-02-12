@@ -20,7 +20,7 @@ export interface PaymentFilters {
  */
 export async function getPayments(filters: PaymentFilters = {}) {
   const params = new URLSearchParams();
-  
+
   if (filters.page) params.append('page', filters.page.toString());
   if (filters.limit) params.append('limit', filters.limit.toString());
   if (filters.status && filters.status !== 'all') params.append('status', filters.status);
@@ -46,6 +46,35 @@ export async function getPaymentStats(period: string = '30d') {
  */
 export async function getPaymentDetails(transactionId: string) {
   const response = await api.get(`/admin/payments/${transactionId}`);
+  return response.data;
+}
+
+
+/**
+ * Approve a pending payout/withdrawal
+ */
+export async function approvePayment(
+  transactionId: string,
+  approvalData: { notes?: string }
+) {
+  const response = await api.post(
+    `/admin/payments/${transactionId}/approve`,
+    approvalData
+  );
+  return response.data;
+}
+
+/**
+ * Reject a pending payout/withdrawal
+ */
+export async function rejectPayment(
+  transactionId: string,
+  rejectionData: { reason: string }
+) {
+  const response = await api.post(
+    `/admin/payments/${transactionId}/reject`,
+    rejectionData
+  );
   return response.data;
 }
 
@@ -86,7 +115,7 @@ export async function getWalletBalances(page: number = 1, limit: number = 50) {
  */
 export async function exportPayments(filters: PaymentFilters = {}) {
   const params = new URLSearchParams();
-  
+
   if (filters.status && filters.status !== 'all') params.append('status', filters.status);
   if (filters.type && filters.type !== 'all') params.append('type', filters.type);
   if (filters.startDate) params.append('startDate', filters.startDate);

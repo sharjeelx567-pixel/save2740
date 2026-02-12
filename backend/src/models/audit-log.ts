@@ -8,7 +8,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IAuditLog extends Document {
   userId?: string;
   action: string;
-  resourceType: 'user' | 'wallet' | 'transaction' | 'pocket' | 'kyc' | 'referral' | 'payment' | 'system';
+  resourceType: 'user' | 'wallet' | 'transaction' | 'pocket' | 'kyc' | 'referral' | 'payment' | 'group' | 'system' | 'content';
   resourceId?: string;
   ipAddress?: string;
   userAgent?: string;
@@ -36,7 +36,7 @@ const auditLogSchema = new Schema<IAuditLog>(
     },
     resourceType: {
       type: String,
-      enum: ['user', 'wallet', 'transaction', 'pocket', 'kyc', 'referral', 'payment', 'system'],
+      enum: ['user', 'wallet', 'transaction', 'pocket', 'kyc', 'referral', 'payment', 'group', 'system', 'content'],
       required: true,
       index: true,
     },

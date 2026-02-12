@@ -221,6 +221,15 @@ router.post('/deposit', authenticateToken, paymentLimiter, validate(depositSchem
 
     const { amount, paymentMethodId, currency = 'usd' } = req.body;
 
+    // Check if deposits are globally paused
+    const { areContributionsPaused, isMaintenanceMode } = await import('../utils/config-utils');
+    if (await areContributionsPaused() || await isMaintenanceMode()) {
+      return res.status(503).json({
+        success: false,
+        error: 'System is currently undergoing maintenance. Deposits are temporarily paused.'
+      });
+    }
+
     // Idempotency check - prevent replay attacks
     const idempotencyKey = req.headers['idempotency-key'] as string;
     if (idempotencyKey) {
@@ -795,6 +804,15 @@ router.post('/withdraw', authenticateToken, paymentLimiter, validate(withdrawSch
     await connectDB();
 
     const { amount, paymentMethodId, reason } = req.body;
+
+    // Check if payouts are globally paused
+    const { arePayoutsPaused, isMaintenanceMode } = await import('../utils/config-utils');
+    if (await arePayoutsPaused() || await isMaintenanceMode()) {
+      return res.status(503).json({
+        success: false,
+        error: 'System is currently undergoing maintenance. Withdrawals are temporarily paused.'
+      });
+    }
 
     // Idempotency check - prevent replay/double withdrawal
     const idempotencyKey = req.headers['idempotency-key'] as string;

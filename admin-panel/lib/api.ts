@@ -186,16 +186,20 @@ export const api = {
       body: data ? JSON.stringify(data) : undefined,
     }),
 
-  delete: <T = any>(endpoint: string) =>
-    request<T>(endpoint, { method: 'DELETE' }),
+  delete: <T = any>(endpoint: string, data?: any) =>
+    request<T>(endpoint, {
+      method: 'DELETE',
+      body: data ? JSON.stringify(data) : undefined,
+    }),
 }
 
 // Admin Auth API - Calls Backend API
 export const authAPI = {
-  login: (email: string, password: string) =>
-    api.post<{ success: boolean; data: { accessToken: string; user: any } }>('/api/admin/auth/login', {
+  login: (email: string, password: string, mfaToken?: string) =>
+    api.post<{ success: boolean; data: { accessToken: string; user: any; mfaRequired?: boolean } }>('/api/admin/auth/login', {
       email,
       password,
+      mfaToken
     }),
 
   me: () => api.get<{ success: boolean; data: any }>('/api/admin/auth/me'),

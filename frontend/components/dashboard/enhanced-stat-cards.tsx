@@ -8,6 +8,7 @@
 import React from 'react'
 import { Card } from '@/components/ui/card'
 import { TrendingUp, Target, Calendar, Zap } from 'lucide-react'
+import { formatCurrency } from '@/lib/utils'
 
 interface StatCardsProps {
   totalSaved: number
@@ -26,7 +27,7 @@ export function EnhancedStatCards({ totalSaved, goal, progress }: StatCardsProps
   const stats = [
     {
       label: 'Total Saved',
-      value: `$${totalSaved.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      value: formatCurrency(totalSaved),
       subtext: `${Math.round(progress)}% of goal`,
       icon: TrendingUp,
       color: 'text-green-600',
@@ -34,16 +35,16 @@ export function EnhancedStatCards({ totalSaved, goal, progress }: StatCardsProps
     },
     {
       label: 'Goal Amount',
-      value: `$${goal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
-      subtext: `$${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })} remaining`,
+      value: formatCurrency(goal),
+      subtext: `${formatCurrency(remaining)} remaining`,
       icon: Target,
       color: 'text-brand-green',
       bgColor: 'bg-green-50',
     },
     {
       label: 'Monthly Rate',
-      value: `$${monthlySavings.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
-      subtext: '$27.40 daily × 30 days',
+      value: formatCurrency(monthlySavings),
+      subtext: `${formatCurrency(dailyRate)} daily × 30 days`,
       icon: Calendar,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',

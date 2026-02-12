@@ -286,21 +286,98 @@ export default function PaymentsPage() {
       </div>
 
       {/* Payments Table */}
+      {/* Payments Table/List */}
       <div className="bg-white rounded-lg shadow">
         {loading ? (
           <div className="p-12 flex justify-center">
             <LoadingSpinner />
           </div>
         ) : (
-          <DataTable
-            columns={columns}
-            data={payments}
-            pagination={{
-              currentPage: page,
-              totalPages: Math.ceil(total / limit),
-              onPageChange: setPage
-            }}
-          />
+          <>
+            {/* Desktop View */}
+            <div className="hidden md:block">
+              <DataTable
+                columns={columns}
+                data={payments}
+                pagination={{
+                  currentPage: page,
+                  totalPages: Math.ceil(total / limit),
+                  onPageChange: setPage
+                }}
+              />
+            </div>
+
+            {/* Mobile View */}
+            <div className="md:hidden space-y-4 p-4">
+              {payments.map((payment) => (
+                <div key={payment.transactionId} className="border rounded-lg p-4 shadow-sm bg-gray-50/50">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="font-medium">{payment.userId.firstName} {payment.userId.lastName}</div>
+                      <div className="text-xs text-gray-500">{payment.userId.email}</div>
+                    </div>
+                    <Badge variant={getStatusBadgeVariant(payment.status)}>
+                      {payment.status}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div>
+                      <span className="text-gray-500 text-xs">Amount</span>
+                      <div className="font-bold">{formatCurrency(payment.amount)}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 text-xs">Type</span>
+                      <div className="capitalize">{payment.type.replace('_', ' ')}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 text-xs">Date</span>
+                      <div>{formatDate(payment.createdAt).split(',')[0]}</div>
+                    </div>
+                  </div>
+
+                  <div className="text-xs font-mono bg-gray-100 p-1 rounded mb-3 truncate">
+                    ID: {payment.transactionId}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => router.push(`/payments/${payment.transactionId}`)}
+                  >
+                    View Details
+                  </Button>
+                </div>
+              ))}
+              {payments.length === 0 && (
+                <div className="text-center py-8 text-gray-500">No payments found</div>
+              )}
+
+              {/* Mobile Pagination */}
+              {total > limit && (
+                <div className="flex justify-between mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 1}
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm self-center">Page {page} of {Math.ceil(total / limit)}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= Math.ceil(total / limit)}
+                    onClick={() => setPage(p => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
     </AdminLayout>

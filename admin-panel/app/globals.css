@@ -75,6 +75,62 @@
     line-height: var(--leading-normal);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  /* Admin: responsive tables - scroll on small screens */
+  .admin-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Admin: content wrapper should allow children to handle overflow */
+  .admin-content-wrap {
+    min-width: 0;
+  }
+
+  /* Responsive Utilities */
+  .min-touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
+  /* Mobile-first responsive spacing */
+  @media (max-width: 768px) {
+    .mobile-stack>*+* {
+      margin-top: 1rem;
+    }
+
+    .mobile-full-width {
+      width: 100%;
+    }
+
+    .mobile-text-center {
+      text-align: center;
+    }
+
+    .mobile-hidden {
+      display: none !important;
+    }
+  }
+
+  /* Tablet and up */
+  @media (min-width: 769px) {
+    .desktop-hidden {
+      display: none !important;
+    }
+  }
+
+  /* Safe area insets for mobile notches */
+  @supports (padding: max(0px)) {
+    body {
+      padding-left: max(0px, env(safe-area-inset-left));
+      padding-right: max(0px, env(safe-area-inset-right));
+    }
   }
 
   /* Typography Hierarchy */

@@ -33,6 +33,20 @@ const nextConfig = {
     maxInactiveAge: 60 * 1000, // 1 minute
     pagesBufferLength: 5, // Only keep 5 pages in memory
   },
+  async redirects() {
+    const policySlugs = [
+      'privacy-policy',
+      'terms-conditions',
+      'savings-challenge-disclaimer',
+      'subscription-refund-policy',
+      'affiliate-referral-policy',
+    ];
+    return policySlugs.map((slug) => ({
+      source: `/${slug}`,
+      destination: `/policy/${slug}`,
+      permanent: true,
+    }));
+  },
   async rewrites() {
     return [
       {

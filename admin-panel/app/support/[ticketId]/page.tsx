@@ -9,6 +9,7 @@ import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import { Send, User as UserIcon, Shield, Clock, AlertCircle, CheckCircle } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
+import { api } from '@/lib/api'
 
 export default function TicketDetailPage() {
     const params = useParams()
@@ -34,19 +35,13 @@ export default function TicketDetailPage() {
 
     const fetchTicket = async () => {
         try {
-            const token = localStorage.getItem('token')
-            const res = await fetch(`http://localhost:5000/api/admin/support-tickets/${ticketId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
-            const data = await res.json()
+            const data = await api.get<{ success: boolean; data: any }>(`/api/admin/support-tickets/${ticketId}`)
             if (data.success) {
                 setTicket({
                     ...data.data.ticket,
                     user: data.data.user,
                     assignedAdmin: data.data.assignedAdmin
                 })
-            } else {
-                // Handle error
             }
         } catch (error) {
             console.error('Error fetching ticket:', error)
@@ -60,16 +55,9 @@ export default function TicketDetailPage() {
 
         setSending(true)
         try {
-            const token = localStorage.getItem('token')
-            const res = await fetch(`http://localhost:5000/api/admin/support-tickets/${ticketId}/reply`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ message: replyMessage })
+            const data = await api.post<{ success: boolean }>(`/api/admin/support-tickets/${ticketId}/reply`, {
+                message: replyMessage
             })
-            const data = await res.json()
             if (data.success) {
                 setReplyMessage('')
                 fetchTicket() // Refresh messages
@@ -83,16 +71,9 @@ export default function TicketDetailPage() {
 
     const updateStatus = async (newStatus: string) => {
         try {
-            const token = localStorage.getItem('token')
-            const res = await fetch(`http://localhost:5000/api/admin/support-tickets/${ticketId}/status`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ status: newStatus })
+            const data = await api.patch<{ success: boolean }>(`/api/admin/support-tickets/${ticketId}/status`, {
+                status: newStatus
             })
-            const data = await res.json()
             if (data.success) {
                 fetchTicket()
             }

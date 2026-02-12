@@ -37,6 +37,9 @@ export interface ProfileData {
     currency?: string
   }
   accountTier: 'basic' | 'pro' | 'business'
+  /** Behavior-based financial role (XKori): Saver, Contribution Member, both, or Inactive */
+  financialRole?: 'inactive' | 'saver' | 'contribution_member' | 'saver_and_contribution_member'
+  financialRoleLabel?: string
   updatedAt: string
 }
 

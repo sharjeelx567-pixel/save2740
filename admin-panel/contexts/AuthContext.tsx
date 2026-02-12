@@ -15,7 +15,7 @@ interface AdminUser {
 interface AuthContextType {
   user: AdminUser | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, mfaToken?: string) => Promise<{ mfaRequired?: boolean } | void>
   logout: () => Promise<void>
 }
 
@@ -80,8 +80,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const login = async (email: string, password: string) => {
-    const response = await authAPI.login(email, password)
+  const login = async (email: string, password: string, mfaToken?: string) => {
+    const response = await authAPI.login(email, password, mfaToken)
+
+    if (response.success && response.data?.mfaRequired) {
+      return { mfaRequired: true }
+    }
+
     if (response.success && response.data) {
       // Save token first
       tokenManager.set(response.data.accessToken)
@@ -89,13 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Set user in state
       setUser(response.data.user)
 
-      console.log('✅ Login successful! User:', response.data.user)
-      console.log('🔄 Redirecting to dashboard with window.location...')
-
-      // Skip FCM initialization - it's causing redirect issues
-      // Can be enabled later when properly configured
-
-      // Use window.location.href for reliable redirect
       window.location.href = '/'
     }
   }

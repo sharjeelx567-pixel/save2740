@@ -187,7 +187,7 @@ export default function KYCReviewPage() {
   const targetKycId = data.kyc?.id || '';
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <button
@@ -365,7 +365,7 @@ export default function KYCReviewPage() {
               <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
                 {data.kyc.frontImageUrl ? (
                   <Image
-                    src={`http://localhost:5000${data.kyc.frontImageUrl}`}
+                    src={`${process.env.NEXT_PUBLIC_API_URL || ''}${data.kyc.frontImageUrl}`}
                     alt="ID Front"
                     fill
                     className="object-contain"
@@ -391,7 +391,7 @@ export default function KYCReviewPage() {
               </h3>
               <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
                 <Image
-                  src={`http://localhost:5000${data.kyc.backImageUrl}`}
+                  src={`${process.env.NEXT_PUBLIC_API_URL || ''}${data.kyc.backImageUrl}`}
                   alt="ID Back"
                   fill
                   className="object-contain"
@@ -409,7 +409,7 @@ export default function KYCReviewPage() {
               </h3>
               <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
                 <Image
-                  src={`http://localhost:5000${data.kyc.selfieImageUrl}`}
+                  src={`${process.env.NEXT_PUBLIC_API_URL || ''}${data.kyc.selfieImageUrl}`}
                   alt="Selfie"
                   fill
                   className="object-contain"

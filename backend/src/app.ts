@@ -40,10 +40,16 @@ import adminSupportTicketsRoutes from './routes/admin/support-tickets.routes';
 import adminAuditLogsRoutes from './routes/admin/audit-logs.routes';
 import adminSystemConfigRoutes from './routes/admin/system-config.routes';
 import adminPaymentsRoutes from './routes/admin/payments.routes';
+import adminGroupsRoutes from './routes/admin/groups.routes';
+import adminHealthRoutes from './routes/admin/health.routes';
+import adminReportsRoutes from './routes/admin/reports.routes';
+import adminAdminsRoutes from './routes/admin/admins.routes';
 import chatNotificationRoutes from './routes/chat-notification.routes';
 import complianceRoutes from './routes/compliance.routes';
 import fundingRoutes from './routes/funding.routes';
 import subscriptionRoutes from './routes/subscription.routes';
+import usefulLinksRoutes from './routes/useful-links.routes';
+import adminUsefulLinksRoutes from './routes/admin/useful-links.routes';
 import testRoutes from './routes/test.routes'; // Development testing only
 import cronTestRoutes from './routes/cron-test.routes'; // Cron job testing
 
@@ -488,9 +494,15 @@ app.use('/api/admin/support-tickets', adminSupportTicketsRoutes);
 app.use('/api/admin/audit-logs', adminAuditLogsRoutes);
 app.use('/api/admin/system-config', adminSystemConfigRoutes);
 app.use('/api/admin/payments', adminPaymentsRoutes);
+app.use('/api/admin/groups', adminGroupsRoutes);
+app.use('/api/admin/health', adminHealthRoutes);
+app.use('/api/admin/reports', adminReportsRoutes);
+app.use('/api/admin/administrators', adminAdminsRoutes);
 app.use('/api/fcm', fcmRoutes);
 app.use('/api/chat-notification', chatNotificationRoutes);
 app.use('/api/funding', fundingRoutes);
+app.use('/api/useful-links', usefulLinksRoutes);
+app.use('/api/admin/useful-links', adminUsefulLinksRoutes);
 
 // Development Testing Routes (only in development)
 if (process.env.NODE_ENV !== 'production') {

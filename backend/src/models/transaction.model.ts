@@ -28,7 +28,7 @@ const TransactionSchema = new Schema<ITransaction>({
     type: {
         type: String,
         required: true,
-        enum: ['deposit', 'withdraw', 'withdrawal', 'save_daily', 'goal_fund', 'referral_bonus', 'group_contribution', 'transfer', 'refund', 'fee']
+        enum: ['deposit', 'withdraw', 'withdrawal', 'save_daily', 'goal_fund', 'referral_bonus', 'group_contribution', 'group_payout', 'chain_break_compensation', 'transfer', 'refund', 'fee']
     },
     amount: { type: Number, required: true },
     status: {

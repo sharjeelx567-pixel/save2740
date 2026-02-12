@@ -8,7 +8,7 @@ import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Modal from '@/components/ui/Modal';
-import { getPaymentDetails, refundPayment } from '@/lib/services/payments.service';
+import { getPaymentDetails, refundPayment, approvePayment, rejectPayment } from '@/lib/services/payments.service';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function PaymentDetailsPage() {
@@ -22,6 +22,16 @@ export default function PaymentDetailsPage() {
   const [refunding, setRefunding] = useState(false);
   const [refundAmount, setRefundAmount] = useState('');
   const [refundReason, setRefundReason] = useState('');
+
+  // Approval State
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [approvalNotes, setApprovalNotes] = useState('');
+
+  // Rejection State
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   useEffect(() => {
     fetchPaymentDetails();
@@ -60,6 +70,42 @@ export default function PaymentDetailsPage() {
       alert(`Failed to process refund: ${error.message}`);
     } finally {
       setRefunding(false);
+    }
+  };
+
+  /* Handlers */
+
+  const handleApprove = async () => {
+    setApproving(true);
+    try {
+      await approvePayment(transactionId, { notes: approvalNotes });
+      alert('Payout approved successfully');
+      setApproveModalOpen(false);
+      fetchPaymentDetails();
+    } catch (error: any) {
+      console.error('Error approving payment:', error);
+      alert(`Failed to approve: ${error.message}`);
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectReason) {
+      alert('Please enter a rejection reason');
+      return;
+    }
+    setRejecting(true);
+    try {
+      await rejectPayment(transactionId, { reason: rejectReason });
+      alert('Payout rejected successfully');
+      setRejectModalOpen(false);
+      fetchPaymentDetails();
+    } catch (error: any) {
+      console.error('Error rejecting payment:', error);
+      alert(`Failed to reject: ${error.message}`);
+    } finally {
+      setRejecting(false);
     }
   };
 
@@ -123,8 +169,8 @@ export default function PaymentDetailsPage() {
                     transaction.status === 'completed'
                       ? 'success'
                       : transaction.status === 'pending'
-                      ? 'warning'
-                      : 'danger'
+                        ? 'warning'
+                        : 'danger'
                   }
                 >
                   {transaction.status}
@@ -234,8 +280,8 @@ export default function PaymentDetailsPage() {
                           event.status === 'processed'
                             ? 'success'
                             : event.status === 'failed'
-                            ? 'danger'
-                            : 'default'
+                              ? 'danger'
+                              : 'default'
                         }
                       >
                         {event.status}
@@ -272,6 +318,28 @@ export default function PaymentDetailsPage() {
                     Issue Refund
                   </Button>
                 )}
+
+              {/* Pending Withdrawal Actions */}
+              {transaction.status === 'pending' &&
+                (transaction.type === 'withdrawal' || transaction.type === 'payout' || transaction.type === 'withdraw') && (
+                  <>
+                    <Button
+                      onClick={() => setApproveModalOpen(true)}
+                      variant="primary"
+                      className="w-full bg-green-600 hover:bg-green-700"
+                    >
+                      Approve Payout
+                    </Button>
+                    <Button
+                      onClick={() => setRejectModalOpen(true)}
+                      variant="danger"
+                      className="w-full"
+                    >
+                      Reject Payout
+                    </Button>
+                  </>
+                )}
+
               <Button
                 onClick={() => router.push('/payments')}
                 variant="outline"
@@ -356,6 +424,89 @@ export default function PaymentDetailsPage() {
             </Button>
             <Button onClick={handleRefund} disabled={refunding}>
               {refunding ? 'Processing...' : 'Process Refund'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Approve Modal */}
+      <Modal
+        isOpen={approveModalOpen}
+        onClose={() => setApproveModalOpen(false)}
+        title="Approve Payout"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Are you sure you want to approve this payout of <strong>{formatCurrency(transaction.amount)}</strong>?
+            This will mark the transaction as completed.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Approval Notes (Optional)
+            </label>
+            <textarea
+              className="w-full border rounded-lg px-3 py-2"
+              rows={3}
+              value={approvalNotes}
+              onChange={(e) => setApprovalNotes(e.target.value)}
+              placeholder="Internal notes..."
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setApproveModalOpen(false)}
+              disabled={approving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleApprove}
+              disabled={approving}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {approving ? 'Approving...' : 'Confirm Approval'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reject Modal */}
+      <Modal
+        isOpen={rejectModalOpen}
+        onClose={() => setRejectModalOpen(false)}
+        title="Reject Payout"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Rejecting this payout will refund <strong>{formatCurrency(transaction.amount)}</strong> back to the user's wallet.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Rejection Reason (Required)
+            </label>
+            <textarea
+              className="w-full border rounded-lg px-3 py-2"
+              rows={3}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Reason for rejection (visible to user)..."
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setRejectModalOpen(false)}
+              disabled={rejecting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleReject}
+              disabled={rejecting}
+              variant="danger"
+            >
+              {rejecting ? 'Rejecting...' : 'Confirm Rejection'}
             </Button>
           </div>
         </div>

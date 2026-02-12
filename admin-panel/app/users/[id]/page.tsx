@@ -4,379 +4,297 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import AdminLayout from '@/components/layout/AdminLayout'
 import PageHeader from '@/components/layout/PageHeader'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/Table'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
-import { TableSkeleton } from '@/components/ui/SkeletonLoader'
-import { usersService } from '@/lib/services/users.service'
-import { User, Mail, Phone, Calendar, Wallet, Shield, AlertCircle, Lock, Unlock, Ban, LogOut, ArrowLeft } from 'lucide-react'
+import {
+  User, Mail, Phone, MapPin, Calendar, Shield, CreditCard,
+  Lock, Unlock, Ban, Eye, EyeOff, FileText, History, AlertTriangle,
+  ArrowLeft, LogOut, Snowflake, Flame
+} from 'lucide-react'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { usersService } from '@/lib/services/users.service'
+import { auditLogsService } from '@/lib/services/audit-logs.service'
 import Link from 'next/link'
 
 export default function UserDetailPage() {
-  const params = useParams()
+  const { id } = useParams()
   const router = useRouter()
-  const userId = params?.id as string
-
   const [data, setData] = useState<any>(null)
+  const [auditLogs, setAuditLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [showPII, setShowPII] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [noteText, setNoteText] = useState('')
 
   useEffect(() => {
-    if (userId) {
-      loadUserData()
-    }
-  }, [userId])
+    if (id) loadData()
+  }, [id])
 
-  const loadUserData = async () => {
+  const loadData = async () => {
     try {
       setLoading(true)
-      setError(null)
-      const userData = await usersService.getUser(userId)
-      setData(userData)
-    } catch (err: any) {
-      console.error('Failed to load user:', err)
-      setError(err.message || 'Failed to load user data')
+      const userIdStr = id as string
+      const [userRes, auditRes] = await Promise.all([
+        usersService.getUserById(userIdStr),
+        auditLogsService.getUserLogs(userIdStr)
+      ])
+      setData(userRes.data)
+      setAuditLogs(auditRes.data.logs || auditRes.data || [])
+    } catch (err) {
+      console.error('Failed to load user data:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleAction = async (action: 'lock' | 'unlock' | 'suspend' | 'forceLogout') => {
-    if (!confirm(`Are you sure you want to ${action} this user?`)) return
+  const maskString = (str: string, visibleCount: number = 4) => {
+    if (!str || showPII) return str
+    return str.substring(0, visibleCount) + '*'.repeat(Math.max(0, str.length - visibleCount))
+  }
+
+  const handleAction = async (action: string) => {
+    const reason = prompt(`Please provide a reason for ${action}:`)
+    if (!reason) return
 
     try {
       setActionLoading(true)
-      
-      if (action === 'lock') {
-        await usersService.lockUser(userId)
-      } else if (action === 'unlock') {
-        await usersService.unlockUser(userId)
-      } else if (action === 'suspend') {
-        await usersService.suspendUser(userId)
-      } else if (action === 'forceLogout') {
-        await usersService.forceLogout(userId)
-      }
+      if (action === 'lock') await usersService.lockUser(id as string, reason)
+      else if (action === 'unlock') await usersService.unlockUser(id as string)
+      else if (action === 'suspend') await usersService.suspendUser(id as string, reason)
+      else if (action === 'forceLogout') await usersService.forceLogout(id as string)
+      else if (action === 'freezeWallet') await usersService.freezeWallet(id as string, reason)
+      else if (action === 'unfreezeWallet') await usersService.unfreezeWallet(id as string, reason)
 
-      await loadUserData()
+      await loadData()
     } catch (err: any) {
-      console.error(`Failed to ${action}:`, err)
-      alert(`Failed to ${action}: ${err.message}`)
+      alert(err.message || 'Action failed')
     } finally {
       setActionLoading(false)
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, 'success' | 'warning' | 'danger' | 'default'> = {
-      active: 'success',
-      suspended: 'warning',
-      locked: 'danger',
-      deleted: 'default'
+  const handleAddNote = async () => {
+    if (!noteText.trim()) return
+    try {
+      setActionLoading(true)
+      await usersService.addNote(id as string, noteText)
+      setNoteText('')
+      await loadData()
+    } catch (err: any) {
+      alert(err.message || 'Failed to add note')
+    } finally {
+      setActionLoading(false)
     }
-    return <Badge variant={variants[status] || 'default'}>{status}</Badge>
   }
 
-  const getKycBadge = (status: string) => {
-    const variants: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
-      approved: 'success',
-      pending: 'warning',
-      rejected: 'danger',
-      none: 'info',
-      not_submitted: 'info'
-    }
-    const label = status === 'not_submitted' || status === 'none' ? 'Not Submitted' : status
-    return <Badge variant={variants[status] || 'default'}>{label}</Badge>
-  }
-
-  if (loading) {
-    return (
-      <AdminLayout>
-        <div className="p-6 space-y-6 animate-fade-in">
-          <div className="skeleton h-8 w-64 mb-6" />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <Card><CardContent className="p-6"><div className="skeleton h-32 w-full" /></CardContent></Card>
-              <Card><CardContent className="p-6"><div className="skeleton h-64 w-full" /></CardContent></Card>
-            </div>
-            <div className="space-y-6">
-              <Card><CardContent className="p-6"><div className="skeleton h-48 w-full" /></CardContent></Card>
-            </div>
-          </div>
-        </div>
-      </AdminLayout>
-    )
-  }
-
-  if (error || !data) {
-    return (
-      <AdminLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-            <p className="text-red-600 mb-4">{error || 'User not found'}</p>
-            <Button onClick={() => router.push('/users')}>Back to Users</Button>
-          </div>
-        </div>
-      </AdminLayout>
-    )
-  }
+  if (loading) return <AdminLayout><div className="p-6">Loading user profile...</div></AdminLayout>
+  if (!data) return <AdminLayout><div className="p-6">User not found</div></AdminLayout>
 
   const user = data.user || data
+  const wallet = data.wallet
 
   return (
     <AdminLayout>
-      <div className="p-6 space-y-6 animate-fade-in">
-        {/* Back Button */}
-        <Link href="/users" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 focus-ring rounded px-2 py-1">
-          <ArrowLeft className="h-4 w-4" />
-          Back to Users
+      <div className="space-y-6 animate-fade-in">
+        <Link href="/users" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900">
+          <ArrowLeft className="h-4 w-4" /> Back to Users
         </Link>
 
         <PageHeader
           title={`${user.firstName} ${user.lastName}`}
-          description={user.email}
+          description={`UID: ${user._id} | Joined ${formatDateTime(user.createdAt)}`}
           breadcrumbs={[
             { label: 'Dashboard', href: '/' },
             { label: 'Users', href: '/users' },
-            { label: user.firstName }
+            { label: user.email }
           ]}
         />
 
+        {/* Header Actions */}
+        <div className="flex flex-col sm:flex-row flex-wrap justify-between items-start sm:items-center bg-white p-4 rounded-xl border shadow-sm gap-4">
+          <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+            <Badge variant={user.accountStatus === 'active' ? 'success' : 'danger'} className="px-3 py-1">
+              {user.accountStatus.toUpperCase()}
+            </Badge>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Shield className="w-4 h-4" /> KYC:
+              <Badge variant={user.kycStatus === 'approved' ? 'success' : 'warning'}>
+                {user.kycStatus}
+              </Badge>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            <Button variant="outline" size="sm" onClick={() => setShowPII(!showPII)} className="flex-1 sm:flex-none">
+              {showPII ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+              {showPII ? 'Mask PII' : 'Reveal PII'}
+            </Button>
+
+            {user.accountStatus === 'locked' ? (
+              <Button variant="outline" size="sm" className="text-green-600 border-green-200 flex-1 sm:flex-none" onClick={() => handleAction('unlock')} disabled={actionLoading}>
+                <Unlock className="w-4 h-4 mr-2" /> Unlock Account
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" className="text-red-600 border-red-200 flex-1 sm:flex-none" onClick={() => handleAction('lock')} disabled={actionLoading}>
+                <Lock className="w-4 h-4 mr-2" /> Lock Account
+              </Button>
+            )}
+
+            {wallet?.status === 'frozen' ? (
+              <Button variant="outline" size="sm" className="text-green-600 border-green-200 flex-1 sm:flex-none" onClick={() => handleAction('unfreezeWallet')} disabled={actionLoading}>
+                <Flame className="w-4 h-4 mr-2" /> Unfreeze Wallet
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" className="text-amber-600 border-amber-200 flex-1 sm:flex-none" onClick={() => handleAction('freezeWallet')} disabled={actionLoading}>
+                <Snowflake className="w-4 h-4 mr-2" /> Freeze Wallet
+              </Button>
+            )}
+
+            <Button variant="danger" size="sm" onClick={() => handleAction('suspend')} disabled={actionLoading || user.accountStatus === 'suspended'} className="flex-1 sm:flex-none">
+              <Ban className="w-4 h-4 mr-2" /> Suspend
+            </Button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* User Profile */}
+          {/* Left: User Details */}
+          <div className="space-y-6 lg:col-span-1">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Profile Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-gray-500 mb-1">Full Name</p>
-                    <p className="font-medium text-gray-900">{user.firstName} {user.lastName}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 mb-1">Email</p>
-                    <p className="font-medium text-gray-900">{user.email}</p>
-                  </div>
-                  {user.phoneNumber && (
+              <CardHeader><CardTitle className="text-lg">Identity & Contact</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <Mail className="w-5 h-5 text-gray-400" />
                     <div>
-                      <p className="text-gray-500 mb-1">Phone</p>
-                      <p className="font-medium text-gray-900">{user.phoneNumber}</p>
+                      <p className="text-xs text-gray-500 font-bold uppercase">Email Address</p>
+                      <p className="text-sm font-medium">{maskString(user.email, 3)}</p>
                     </div>
-                  )}
-                  <div>
-                    <p className="text-gray-500 mb-1">Account Status</p>
-                    {getStatusBadge(user.accountStatus)}
                   </div>
-                  <div>
-                    <p className="text-gray-500 mb-1">KYC Status</p>
-                    {getKycBadge(user.kycStatus)}
-                  </div>
-                  <div>
-                    <p className="text-gray-500 mb-1">Email Verified</p>
-                    <p className="font-medium text-gray-900">{user.emailVerified ? '✓ Yes' : '✗ No'}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 mb-1">Member Since</p>
-                    <p className="font-medium text-gray-900">{formatDateTime(user.createdAt)}</p>
-                  </div>
-                  {user.lastLogin && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <Phone className="w-5 h-5 text-gray-400" />
                     <div>
-                      <p className="text-gray-500 mb-1">Last Login</p>
-                      <p className="font-medium text-gray-900">{formatDateTime(user.lastLogin)}</p>
+                      <p className="text-xs text-gray-500 font-bold uppercase">Phone Number</p>
+                      <p className="text-sm font-medium">{maskString(user.phoneNumber || 'Not provided', 5)}</p>
                     </div>
-                  )}
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <MapPin className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500 font-bold uppercase">Residential Address</p>
+                      <p className="text-sm font-medium">
+                        {user.address?.street ? `${user.address.street}, ${user.address.city}` : 'Not provided'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Wallet Information */}
-            {data.wallet && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Wallet className="h-5 w-5" />
-                    Wallet
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <p className="text-gray-600 mb-1">Balance</p>
-                      <p className="font-bold text-gray-900">{formatCurrency(data.wallet.balance)}</p>
-                    </div>
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <p className="text-gray-600 mb-1">Available</p>
-                      <p className="font-bold text-gray-900">{formatCurrency(data.wallet.availableBalance)}</p>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-gray-600 mb-1">Status</p>
-                      <p className="font-bold text-gray-900">{data.wallet.locked ? '🔒 Locked' : '✓ Active'}</p>
-                    </div>
+            <Card>
+              <CardHeader><CardTitle className="text-lg">Financial Overview</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className={`flex justify-between items-center p-4 rounded-xl border ${wallet?.status === 'frozen' ? 'bg-red-50 border-red-100' : 'bg-blue-50 border-blue-100'}`}>
+                  <div>
+                    <p className={`text-xs font-bold uppercase ${wallet?.status === 'frozen' ? 'text-red-500' : 'text-blue-600'}`}>
+                      {wallet?.status === 'frozen' ? 'Wallet Frozen' : 'Wallet Balance'}
+                    </p>
+                    <p className="text-2xl font-black text-blue-900">{formatCurrency(wallet?.balance || 0)}</p>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Recent Transactions */}
-            {data.recentTransactions && data.recentTransactions.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Transactions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Date</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {data.recentTransactions.slice(0, 5).map((tx: any) => (
-                        <TableRow key={tx._id}>
-                          <TableCell className="capitalize">{tx.type}</TableCell>
-                          <TableCell className="font-medium">{formatCurrency(tx.amount)}</TableCell>
-                          <TableCell><Badge variant={tx.status === 'completed' ? 'success' : 'warning'}>{tx.status}</Badge></TableCell>
-                          <TableCell className="text-gray-600">{formatDateTime(tx.createdAt)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
+                  <CreditCard className={`w-8 h-8 ${wallet?.status === 'frozen' ? 'text-red-300' : 'text-blue-300'}`} />
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-400 font-bold uppercase">Available</p>
+                    <p className="text-sm font-bold text-gray-900">{formatCurrency(wallet?.availableBalance || 0)}</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-400 font-bold uppercase">Locked (Groups)</p>
+                    <p className="text-sm font-bold text-amber-600">{formatCurrency(wallet?.escrowBalance || 0)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Quick Stats */}
+          {/* Middle & Right: Activity & Audit */}
+          <div className="lg:col-span-2 space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Quick Stats</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-gray-600">Active Sessions</span>
-                  <span className="font-bold text-gray-900">{data.activeSessions || 0}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-gray-600">Open Tickets</span>
-                  <span className="font-bold text-gray-900">{data.openTickets || 0}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Admin Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Admin Actions
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <History className="w-5 h-5" /> Audit Activity Log
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {user.accountStatus === 'locked' ? (
-                  <Button 
-                    variant="primary" 
-                    className="w-full justify-start"
-                    onClick={() => handleAction('unlock')}
-                    disabled={actionLoading}
-                    isLoading={actionLoading}
-                  >
-                    <Unlock className="h-4 w-4 mr-2" />
-                    Unlock Account
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="danger" 
-                    className="w-full justify-start"
-                    onClick={() => handleAction('lock')}
-                    disabled={actionLoading}
-                    isLoading={actionLoading}
-                  >
-                    <Lock className="h-4 w-4 mr-2" />
-                    Lock Account
-                  </Button>
-                )}
-
-                {user.accountStatus !== 'suspended' && (
-                  <Button 
-                    variant="danger" 
-                    className="w-full justify-start"
-                    onClick={() => handleAction('suspend')}
-                    disabled={actionLoading}
-                    isLoading={actionLoading}
-                  >
-                    <Ban className="h-4 w-4 mr-2" />
-                    Suspend Account
-                  </Button>
-                )}
-
-                {data.activeSessions > 0 && (
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={() => handleAction('forceLogout')}
-                    disabled={actionLoading}
-                    isLoading={actionLoading}
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Force Logout All Sessions
-                  </Button>
-                )}
-
-                <Link href={`/kyc/${userId}`} className="block">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Shield className="h-4 w-4 mr-2" />
-                    View KYC Details
-                  </Button>
-                </Link>
+              <CardContent className="p-0">
+                <div className="max-h-[400px] overflow-y-auto">
+                  {!auditLogs || auditLogs.length === 0 ? (
+                    <p className="p-6 text-center text-gray-500 italic">No recent audit logs for this user.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Action</TableHead>
+                          <TableHead>Date/Time</TableHead>
+                          <TableHead>Severity</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {auditLogs.slice(0, 50).map((log: any) => (
+                          <TableRow key={log._id}>
+                            <TableCell className="font-medium text-gray-900">{log.action.replace(/_/g, ' ')}</TableCell>
+                            <TableCell className="text-gray-500 whitespace-nowrap">{formatDateTime(log.createdAt)}</TableCell>
+                            <TableCell>
+                              <Badge variant={log.severity === 'critical' || log.severity === 'error' ? 'danger' : log.severity === 'warning' ? 'warning' : 'info'}>
+                                {log.severity}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
-            {/* KYC Info */}
-            {data.kyc && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>KYC Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <p className="text-gray-500 mb-1">Status</p>
-                    {getKycBadge(data.kyc.status)}
-                  </div>
-                  <div>
-                    <p className="text-gray-500 mb-1">Document Type</p>
-                    <p className="font-medium text-gray-900 capitalize">
-                      {data.kyc.documentType?.replace('-', ' ') || 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 mb-1">Submitted</p>
-                    <p className="font-medium text-gray-900">
-                      {formatDateTime(data.kyc.createdAt)}
-                    </p>
-                  </div>
-                  {data.kyc.rejectionReason && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="font-medium text-red-800 mb-1">Rejection Reason:</p>
-                      <p className="text-red-700">{data.kyc.rejectionReason}</p>
-                    </div>
+            <Card className="border-blue-200">
+              <CardHeader><CardTitle className="text-lg flex items-center gap-2 text-blue-800"><FileText className="w-5 h-5" /> Internal Admin Notes</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                  {user.adminNotes && user.adminNotes.length > 0 ? (
+                    user.adminNotes.map((note: any, idx: number) => (
+                      <div key={idx} className="p-4 bg-blue-50 rounded-xl border border-blue-100 flex gap-3">
+                        <AlertTriangle className="w-5 h-5 text-blue-500 shrink-0" />
+                        <div>
+                          <p className="text-sm text-blue-900">{note.note}</p>
+                          <p className="text-xs text-blue-500 mt-1">
+                            Added by {note.adminName} on {formatDateTime(note.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-gray-500 italic py-4">No internal notes yet.</p>
                   )}
-                </CardContent>
-              </Card>
-            )}
+                </div>
+
+                <div className="pt-4 border-t">
+                  <textarea
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    className="w-full p-3 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none min-h-[100px]"
+                    placeholder="Add a new internal note (auditable)..."
+                  />
+                  <Button
+                    className="mt-2 w-full"
+                    onClick={handleAddNote}
+                    disabled={actionLoading || !noteText.trim()}
+                  >
+                    Add Internal Note
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

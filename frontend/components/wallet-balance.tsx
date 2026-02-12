@@ -5,6 +5,7 @@ import { Wallet, Lock, Gift } from "lucide-react"
 import { useWallet } from "@/hooks/use-wallet"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { formatCurrency } from "@/lib/utils"
 
 interface WalletBalanceProps {
   compact?: boolean
@@ -38,7 +39,7 @@ export function WalletBalance({ compact = false }: WalletBalanceProps) {
           <Wallet className="w-4 h-4 text-brand-green" />
           <span className="text-xs font-semibold text-slate-700">Wallet Balance</span>
         </div>
-        <p className="text-lg sm:text-xl font-bold text-brand-green">${balance.toFixed(2)}</p>
+        <p className="text-lg sm:text-xl font-bold text-brand-green">{formatCurrency(balance)}</p>
         <p className="text-xs text-slate-600 mt-1">Available to use</p>
       </div>
     )
@@ -79,7 +80,7 @@ export function WalletBalance({ compact = false }: WalletBalanceProps) {
               <span className="text-sm text-slate-600">Available Balance</span>
               <Wallet className="w-4 h-4 text-brand-green" />
             </div>
-            <p className="text-2xl sm:text-3xl font-bold text-brand-green">${balance.toFixed(2)}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-brand-green">{formatCurrency(balance)}</p>
             <p className="text-xs text-slate-600 mt-2">Ready to spend or withdraw</p>
           </div>
 
@@ -89,7 +90,7 @@ export function WalletBalance({ compact = false }: WalletBalanceProps) {
               <span className="text-sm text-slate-600">Locked Balance</span>
               <Lock className="w-4 h-4 text-brand-green" />
             </div>
-            <p className="text-2xl sm:text-3xl font-bold text-brand-green">${locked.toFixed(2)}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-brand-green">{formatCurrency(locked)}</p>
             <p className="text-xs text-slate-600 mt-2">Committed to Saver Pockets</p>
           </div>
 
@@ -99,7 +100,7 @@ export function WalletBalance({ compact = false }: WalletBalanceProps) {
               <span className="text-sm text-slate-600">Referral Earnings</span>
               <Gift className="w-4 h-4 text-amber-600" />
             </div>
-            <p className="text-2xl sm:text-3xl font-bold text-amber-600">${referral.toFixed(2)}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-amber-600">{formatCurrency(referral)}</p>
             <p className="text-xs text-slate-600 mt-2">From successful referrals</p>
           </div>
 
@@ -107,7 +108,7 @@ export function WalletBalance({ compact = false }: WalletBalanceProps) {
           <div className="pt-4 border-t border-slate-200">
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold text-slate-700">Total Balance</span>
-              <p className="text-xl sm:text-2xl font-bold text-slate-900">${total.toFixed(2)}</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-900">{formatCurrency(total)}</p>
             </div>
           </div>
 

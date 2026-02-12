@@ -54,18 +54,18 @@ router.post('/', authenticateAdmin, async (req: AuthRequest, res: Response) => {
         const { key, value, type, category, description } = req.body;
 
         if (!key || !value || !type || !category || !description) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Key, value, type, category, and description are required' 
+            return res.status(400).json({
+                success: false,
+                error: 'Key, value, type, category, and description are required'
             });
         }
 
         // Check if config already exists
         const existing = await SystemConfig.findOne({ key });
         if (existing) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Config with this key already exists' 
+            return res.status(400).json({
+                success: false,
+                error: 'Config with this key already exists'
             });
         }
 
@@ -136,6 +136,42 @@ router.delete('/:key', authenticateAdmin, async (req: AuthRequest, res: Response
     } catch (error) {
         console.error('Delete config error:', error);
         res.status(500).json({ success: false, error: 'Failed to delete config' });
+    }
+});
+
+// POST /api/admin/system-config/:key - Upsert/Update config
+router.post('/:key', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+    try {
+        await connectDB();
+        const { key } = req.params;
+        const { value, type = 'boolean', category = 'general', description } = req.body;
+
+        let config = await SystemConfig.findOne({ key });
+
+        if (config) {
+            if (value !== undefined) config.value = value;
+            if (description) config.description = description;
+            config.updatedBy = req.userId!;
+            await config.save();
+        } else {
+            config = await SystemConfig.create({
+                key,
+                value,
+                type,
+                category,
+                description: description || `Global setting for ${key}`,
+                updatedBy: req.userId
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Config saved successfully',
+            data: config
+        });
+    } catch (error) {
+        console.error('Upsert config error:', error);
+        res.status(500).json({ success: false, error: 'Failed to save config' });
     }
 });
 

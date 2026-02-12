@@ -14,7 +14,7 @@ const router = express.Router();
 router.get('/', authenticateAdmin, async (req: AuthRequest, res: Response) => {
     try {
         await connectDB();
-        const { page = 1, limit = 50, search, type, status } = req.query;
+        const { page = 1, limit = 50, search, type, status, dateFrom, dateTo, amountMin, amountMax } = req.query;
 
         const query: any = {};
 
@@ -46,6 +46,31 @@ router.get('/', authenticateAdmin, async (req: AuthRequest, res: Response) => {
 
         if (status && status !== 'all') {
             query.status = status;
+        }
+
+        if (dateFrom || dateTo) {
+            query.createdAt = {};
+            if (dateFrom) query.createdAt.$gte = new Date(dateFrom as string);
+            if (dateTo) {
+                const d = new Date(dateTo as string);
+                d.setHours(23, 59, 59, 999);
+                query.createdAt.$lte = d;
+            }
+        }
+
+        if (amountMin != null && amountMin !== '') {
+            const n = Number(amountMin);
+            if (!isNaN(n)) {
+                query.amount = query.amount || {};
+                query.amount.$gte = n;
+            }
+        }
+        if (amountMax != null && amountMax !== '') {
+            const n = Number(amountMax);
+            if (!isNaN(n)) {
+                query.amount = query.amount || {};
+                query.amount.$lte = n;
+            }
         }
 
         const skip = (Number(page) - 1) * Number(limit);

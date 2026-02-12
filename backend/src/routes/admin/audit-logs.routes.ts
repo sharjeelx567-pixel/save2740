@@ -10,24 +10,26 @@ const router = express.Router();
 router.get('/', authenticateAdmin, async (req: AuthRequest, res: Response) => {
     try {
         await connectDB();
-        const { 
-            page = 1, 
-            limit = 50, 
+        const {
+            page = 1,
+            limit = 50,
             resourceType,
             severity,
             userId,
             action,
+            resourceId,
             startDate,
             endDate
         } = req.query;
 
         const query: any = {};
-        
+
         if (resourceType && resourceType !== 'all') query.resourceType = resourceType;
+        if (resourceId) query.resourceId = resourceId;
         if (severity && severity !== 'all') query.severity = severity;
         if (userId) query.userId = userId;
         if (action) query.action = { $regex: action, $options: 'i' };
-        
+
         // Date range filter
         if (startDate || endDate) {
             query.createdAt = {};
@@ -48,7 +50,7 @@ router.get('/', authenticateAdmin, async (req: AuthRequest, res: Response) => {
         // Get user details for logs
         const logsWithUsers = await Promise.all(
             logs.map(async (log) => {
-                const user = log.userId 
+                const user = log.userId
                     ? await User.findById(log.userId).select('email firstName lastName')
                     : null;
 
@@ -140,7 +142,7 @@ router.get('/:logId', authenticateAdmin, async (req: AuthRequest, res: Response)
             return res.status(404).json({ success: false, error: 'Log not found' });
         }
 
-        const user = log.userId 
+        const user = log.userId
             ? await User.findById(log.userId).select('-passwordHash')
             : null;
 

@@ -7,6 +7,9 @@ export interface IAdmin extends Document {
     email: string;
     passwordHash: string;
     role: 'ADMIN' | 'SUPER_ADMIN';
+    permissions?: string[];
+    mfaEnabled: boolean;
+    mfaSecret?: string;
     isActive: boolean;
     lastLogin?: Date;
     createdAt: Date;
@@ -19,6 +22,9 @@ const AdminSchema = new Schema<IAdmin>({
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ['ADMIN', 'SUPER_ADMIN'], default: 'ADMIN' },
+    permissions: [{ type: String }], // Optional granular permissions
+    mfaEnabled: { type: Boolean, default: false },
+    mfaSecret: { type: String },
     isActive: { type: Boolean, default: true },
     lastLogin: Date
 }, { timestamps: true });

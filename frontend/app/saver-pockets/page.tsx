@@ -10,6 +10,7 @@ import { Plus, PiggyBank } from "lucide-react"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
+import { formatCurrency } from "@/lib/utils"
 
 interface Pocket {
   id: string
@@ -209,7 +210,7 @@ function SaverPocketsPageContent() {
           saved: updatedPocket.currentAmount.toString(),
           progress: updatedPocket.targetAmount ? Math.min(100, (updatedPocket.currentAmount / updatedPocket.targetAmount) * 100) : 0
         } : p));
-        toast({ title: "Funds Added!", description: `Successfully added $${parseFloat(amount).toFixed(2)}` });
+        toast({ title: "Funds Added!", description: `Successfully added ${formatCurrency(parseFloat(amount))}` });
       } else {
         const err = await response.json();
         toast({ variant: "destructive", title: "Error", description: err.error || "Insufficient funds" });
@@ -268,7 +269,7 @@ function SaverPocketsPageContent() {
 
                   <div>
                     <h3 className="text-lg md:text-xl font-bold text-slate-800">{pocket.name}</h3>
-                    <p className="text-xs md:text-sm text-slate-500 mt-1">Daily Contribution: <span className="font-bold text-slate-700">${(parseFloat(pocket.dailyContribution) * parseInt(pocket.multiplier)).toFixed(2)}</span> ({pocket.multiplier === '1' ? 'Normal' : `x${pocket.multiplier}`})</p>
+                    <p className="text-xs md:text-sm text-slate-500 mt-1">Daily Contribution: <span className="font-bold text-slate-700">{formatCurrency(parseFloat(pocket.dailyContribution) * parseInt(pocket.multiplier))}</span> ({pocket.multiplier === '1' ? 'Normal' : `x${pocket.multiplier}`})</p>
                   </div>
 
                   <div className="space-y-2">
@@ -276,7 +277,7 @@ function SaverPocketsPageContent() {
                       <div className="h-full bg-brand-green rounded-full" style={{ width: `${pocket.progress}%` }} />
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs md:text-sm font-medium text-slate-600">Saved: <span className="font-bold text-brand-green">${parseFloat(pocket.saved).toFixed(2)} / ${parseFloat(pocket.targetAmount).toFixed(2)}</span></p>
+                      <p className="text-xs md:text-sm font-medium text-slate-600">Saved: <span className="font-bold text-brand-green">{formatCurrency(parseFloat(pocket.saved))} / {formatCurrency(parseFloat(pocket.targetAmount))}</span></p>
                       <div className="flex gap-4">
                         <button
                           onClick={() => handleFund(pocket.id)}

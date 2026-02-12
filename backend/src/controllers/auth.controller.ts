@@ -16,6 +16,7 @@ function generateRandomToken(): string {
 }
 
 import { Wallet } from '../models/wallet.model';
+import { Transaction } from '../models/transaction.model';
 import { Referral, ReferralCode } from '../models/referral.model';
 import { detectFraudulentReferral, ReferralAttempt } from '../utils/referral-fraud-detection';
 
@@ -177,6 +178,42 @@ export const verifyEmail = async (req: Request, res: Response) => {
         user.verificationToken = undefined;
         user.verificationTokenExpires = undefined;
         await user.save();
+
+        // --- REFERRAL BONUS: $5 to referee ---
+        if (user.referredBy) {
+            try {
+                const sandboxWallet = await Wallet.findOne({ userId: 'sandbox2' });
+                if (sandboxWallet && sandboxWallet.balance >= 5) {
+                    const refereeWallet = await Wallet.findOne({ userId: user._id.toString() });
+                    if (refereeWallet) {
+                        const bonus = 5;
+                        sandboxWallet.balance -= bonus;
+                        sandboxWallet.availableBalance -= bonus;
+                        await sandboxWallet.save();
+                        refereeWallet.balance += bonus;
+                        refereeWallet.availableBalance += bonus;
+                        await refereeWallet.save();
+                        await Transaction.create({
+                            userId: 'sandbox2',
+                            type: 'debit',
+                            amount: bonus,
+                            category: 'referral_bonus',
+                            status: 'completed',
+                            description: `Welcome bonus for ${user.email}`
+                        });
+                        await Transaction.create({
+                            userId: user._id.toString(),
+                            type: 'credit',
+                            amount: bonus,
+                            category: 'referral_bonus',
+                            status: 'completed',
+                            description: '🎉 Welcome bonus! Thank you for joining Save2740'
+                        });
+                        console.log(`✅ $${bonus} bonus → ${user.email}`);
+                    }
+                }
+            } catch (err) { console.error('Bonus error:', err); }
+        }
 
         res.json({ success: true, message: 'Email verified successfully' });
     } catch (error) {

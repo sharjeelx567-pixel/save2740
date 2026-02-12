@@ -64,7 +64,7 @@ export interface IGroup extends Document {
     autoEndDate?: Date;
 
     // Status
-    status: 'open' | 'locked' | 'active' | 'completed' | 'failed' | 'at_risk';
+    status: 'open' | 'locked' | 'active' | 'completed' | 'failed' | 'at_risk' | 'frozen';
     currentRound: number;
     currentMembers: number;
 
@@ -97,6 +97,19 @@ export interface IGroup extends Document {
         forfeitedAmount: number;
         date: Date;
     }[];
+
+    // ========== ADMIN CONTROLS ==========
+    // Admin can pause contributions without cancelling the group
+    contributionsPaused: boolean;
+    pausedReason?: string;
+    pausedBy?: string; // Admin ID
+    pausedAt?: Date;
+
+    // ========== STATUS TRACKING ==========
+    // Members at risk of missing payment
+    atRiskMembers: mongoose.Types.ObjectId[];
+    // Members who have defaulted
+    defaultedMembers: mongoose.Types.ObjectId[];
 
     createdAt: Date;
     updatedAt: Date;
@@ -209,7 +222,7 @@ const GroupSchema = new Schema<IGroup>(
             type: String,
             required: true,
             default: 'open',
-            enum: ['open', 'locked', 'active', 'completed', 'failed', 'at_risk']
+            enum: ['open', 'locked', 'active', 'completed', 'failed', 'at_risk', 'frozen']
         },
         currentRound: { type: Number, default: 0 },
         currentMembers: { type: Number, default: 1 },
@@ -236,7 +249,17 @@ const GroupSchema = new Schema<IGroup>(
         totalPaidOut: { type: Number, default: 0 },
 
         // Audit
-        chainBreaks: [ChainBreakSchema]
+        chainBreaks: [ChainBreakSchema],
+
+        // ========== ADMIN CONTROLS ==========
+        contributionsPaused: { type: Boolean, default: false },
+        pausedReason: String,
+        pausedBy: String,
+        pausedAt: Date,
+
+        // ========== STATUS TRACKING ==========
+        atRiskMembers: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+        defaultedMembers: [{ type: Schema.Types.ObjectId, ref: 'User' }]
     },
     {
         timestamps: true

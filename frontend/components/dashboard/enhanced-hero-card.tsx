@@ -9,6 +9,7 @@ import React from 'react'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { TrendingUp, Target } from 'lucide-react'
+import { formatCurrency } from '@/lib/utils'
 
 interface HeroCardProps {
   balance: number
@@ -22,17 +23,17 @@ export function HeroCard({ balance, goal, progress }: HeroCardProps) {
   const estimatedDate = new Date()
   estimatedDate.setDate(estimatedDate.getDate() + daysToGoal)
 
-  const progressColor = 
+  const progressColor =
     progress >= 100 ? 'text-green-600' :
-    progress >= 75 ? 'text-brand-green' :
-    progress >= 50 ? 'text-purple-600' :
-    'text-primary'
+      progress >= 75 ? 'text-brand-green' :
+        progress >= 50 ? 'text-purple-600' :
+          'text-primary'
 
   const progressBgColor =
     progress >= 100 ? 'bg-green-100' :
-    progress >= 75 ? 'bg-green-100' :
-    progress >= 50 ? 'bg-purple-100' :
-    'bg-primary/10'
+      progress >= 75 ? 'bg-green-100' :
+        progress >= 50 ? 'bg-purple-100' :
+          'bg-primary/10'
 
   return (
     <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 overflow-hidden">
@@ -44,7 +45,7 @@ export function HeroCard({ balance, goal, progress }: HeroCardProps) {
               Save2740 Goal
             </p>
             <h2 className="text-3xl font-bold text-gray-900 mt-1">
-              ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {formatCurrency(balance)}
             </h2>
           </div>
           <div className={`p-4 rounded-full ${progressBgColor}`}>
@@ -95,14 +96,14 @@ export function HeroCard({ balance, goal, progress }: HeroCardProps) {
             <div>
               <p className="text-sm text-gray-600 mb-1">Goal Amount</p>
               <p className="text-2xl font-bold text-gray-900">
-                ${goal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                {formatCurrency(goal)}
               </p>
             </div>
 
             <div>
               <p className="text-sm text-gray-600 mb-1">Remaining</p>
               <p className={`text-2xl font-bold ${remaining > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                {remaining > 0 ? `$${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : 'Goal Reached! 🎉'}
+                {remaining > 0 ? formatCurrency(remaining) : 'Goal Reached! 🎉'}
               </p>
             </div>
           </div>
@@ -149,7 +150,7 @@ export function HeroCard({ balance, goal, progress }: HeroCardProps) {
               <div>
                 <p className="font-bold text-green-900">Goal Achieved!</p>
                 <p className="text-sm text-green-700">
-                  You've reached your $27,400 savings goal. Congratulations! 🎉
+                  You've reached your {formatCurrency(27400)} savings goal. Congratulations! 🎉
                 </p>
               </div>
             </div>

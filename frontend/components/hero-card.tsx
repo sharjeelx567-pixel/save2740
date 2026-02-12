@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
 import { WithdrawMoney } from "@/components/wallet/withdraw-money"
+import { formatCurrency } from "@/lib/utils"
 
 /**
  * HeroCard Component
@@ -46,7 +47,7 @@ export function HeroCard() {
       if (data.success) {
         toast({
           title: 'Success!',
-          description: `Successfully saved $${dailyAmount} today. Keep your streak alive!`,
+          description: `Successfully saved ${formatCurrency(dailyAmount)} today. Keep your streak alive!`,
         })
         setShowAutoSaveModal(false)
         refetch() // Refresh wallet data
@@ -95,13 +96,13 @@ export function HeroCard() {
 
         <div className="space-y-2 md:space-y-3">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight break-words">
-            Save <span className="text-brand-green">${remaining.toLocaleString()}</span> More This Year
+            Save <span className="text-brand-green">{formatCurrency(remaining)}</span> More This Year
           </h2>
           <p className="text-slate-400 text-xs sm:text-sm md:text-base lg:text-lg break-words">Just ${dailyTarget} a day. Small steps, big results.</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 md:gap-4 pt-2 md:pt-4">
-          <button 
+          <button
             onClick={() => setShowAutoSaveModal(true)}
             className="w-full sm:w-auto bg-brand-green hover:bg-emerald-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-semibold flex items-center justify-center gap-2 transition-colors text-sm md:text-base"
           >
@@ -111,7 +112,7 @@ export function HeroCard() {
             <span className="hidden sm:inline">Process Auto-Save</span>
             <span className="sm:hidden">Auto-Save</span>
           </button>
-          <button 
+          <button
             onClick={() => setShowWithdrawModal(true)}
             className="w-full sm:w-auto border border-slate-600 hover:bg-white/5 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-semibold transition-colors text-sm md:text-base"
           >
@@ -163,15 +164,15 @@ export function HeroCard() {
               Process Daily Auto-Save
             </DialogTitle>
             <DialogDescription>
-              Save ${dailyAmount} today to maintain your savings streak
+              Save {formatCurrency(dailyAmount)} today to maintain your savings streak
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-gray-700">Daily Savings Amount</span>
-                <span className="text-2xl font-bold text-brand-green">${dailyAmount}</span>
+                <span className="text-2xl font-bold text-brand-green">{formatCurrency(dailyAmount)}</span>
               </div>
               <p className="text-xs text-gray-600 mt-2">
                 This will be deducted from your wallet balance and added to your savings goal.

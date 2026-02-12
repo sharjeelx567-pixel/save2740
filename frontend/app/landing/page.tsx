@@ -5,12 +5,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { 
-  TrendingUp, 
-  Shield, 
-  Users, 
-  PiggyBank, 
-  Target, 
+import {
+  TrendingUp,
+  Shield,
+  Users,
+  PiggyBank,
+  Target,
   Sparkles,
   ArrowRight,
   Check,
@@ -75,20 +75,20 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full text-sm font-medium mb-8">
             <Sparkles className="w-4 h-4" />
-            Save ₦2,740 daily and build wealth
+            Save $27.40 daily and build wealth
           </div>
-          
+
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
             Transform Your Financial Future
             <br />
-            <span className="text-emerald-600">₦27.40 at a Time</span>
+            <span className="text-emerald-600">$27.40 at a Time</span>
           </h1>
-          
+
           <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-10">
-            Join thousands of Nigerians who are building sustainable savings habits 
-            with our micro-savings platform. Save as little as ₦27.40 daily and watch your wealth grow.
+            Join thousands of users who are building sustainable savings habits
+            with our micro-savings platform. Save as little as $27.40 daily and watch your wealth grow.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/auth/signup">
               <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-6 text-lg">
@@ -138,7 +138,7 @@ export default function LandingPage() {
               {
                 icon: PiggyBank,
                 title: "Micro-Savings",
-                description: "Start with as little as ₦27.40 per day. Small amounts add up to big savings over time."
+                description: "Start with as little as $27.40 per day. Small amounts add up to big savings over time."
               },
               {
                 icon: Target,
@@ -238,28 +238,28 @@ export default function LandingPage() {
             {[
               {
                 name: "Daily",
-                amount: "₦27.40",
+                amount: "$27.40",
                 period: "/day",
-                yearly: "₦10,001",
+                yearly: "$10,001",
                 popular: false
               },
               {
                 name: "Weekly",
-                amount: "₦191.80",
+                amount: "$191.80",
                 period: "/week",
-                yearly: "₦9,973.60",
+                yearly: "$9,973.60",
                 popular: true
               },
               {
                 name: "Monthly",
-                amount: "₦849.40",
+                amount: "$849.40",
                 period: "/month",
-                yearly: "₦10,192.80",
+                yearly: "$10,192.80",
                 popular: false
               }
             ].map((plan, index) => (
-              <Card 
-                key={index} 
+              <Card
+                key={index}
                 className={`relative ${plan.popular ? 'border-emerald-600 border-2 shadow-xl' : 'border-gray-200'}`}
               >
                 {plan.popular && (
@@ -296,7 +296,7 @@ export default function LandingPage() {
             Ready to Start Your Savings Journey?
           </h2>
           <p className="text-xl text-emerald-100 mb-8">
-            Join thousands of Nigerians building their financial future today.
+            Join thousands of users building their financial future today.
           </p>
           <Link href="/auth/signup">
             <Button size="lg" className="bg-white text-emerald-600 hover:bg-gray-100 px-8 py-6 text-lg font-semibold">

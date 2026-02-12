@@ -229,7 +229,7 @@ router.post('/join', authenticateToken, async (req: AuthRequest, res: Response) 
         details: {
           currentMembers: group.members.length,
           maxMembers: maxLimit,
-          suggestion: group.members.length >= 20 
+          suggestion: group.members.length >= 20
             ? 'Consider creating a new group for better engagement.'
             : 'Try joining a different group or start your own.'
         }
@@ -360,6 +360,15 @@ router.post('/:id/contribute', authenticateToken, async (req: AuthRequest, res: 
     await connectDB();
     const groupId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const { amount } = req.body;
+
+    // Check if contributions are globally paused
+    const { areContributionsPaused, isMaintenanceMode } = await import('../utils/config-utils');
+    if (await areContributionsPaused() || await isMaintenanceMode()) {
+      return res.status(503).json({
+        success: false,
+        error: 'System is currently undergoing maintenance. Contributions are temporarily paused.'
+      });
+    }
 
     if (!mongoose.Types.ObjectId.isValid(groupId)) {
       return res.status(400).json({

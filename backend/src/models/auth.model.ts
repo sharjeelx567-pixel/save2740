@@ -59,6 +59,40 @@ export interface IUser extends Document {
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   lastLogin?: Date;
+  adminNotes?: {
+    note: string;
+    adminId: string;
+    adminName: string;
+    createdAt: Date;
+  }[];
+
+  // ========== MEMBER IDENTITY (XKori) ==========
+  // Scalable array: 'saver' | 'contribution_member' | 'admin' | 'moderator' | ...
+  // Derived from activity; can be cached here for performance.
+  memberRoles?: string[];
+
+  // ========== FINANCIAL BEHAVIOR CLASSIFICATION ==========
+  // Automatically updated based on user actions
+  userType: 'savings_only' | 'contributor' | 'group_owner' | 'both';
+
+  // Stats for classification (auto-calculated)
+  totalSavingsDeposits: number;
+  totalSavingsWithdrawals: number;
+  totalGroupContributions: number;
+  groupsOwned: number;
+  groupsJoined: number;
+
+  // Last activity dates
+  lastSavingsActivity?: Date;
+  lastContributionActivity?: Date;
+
+  // ========== CONTRIBUTION CONTROLS ==========
+  // Admin can pause contributions without affecting savings
+  contributionsEnabled: boolean;
+  contributionsPausedReason?: string;
+  contributionsPausedBy?: string; // Admin ID
+  contributionsPausedAt?: Date;
+
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -203,7 +237,64 @@ const UserSchema = new Schema<IUser>(
         paymentMethodId: { type: String, default: null },
         nextDebitDate: { type: Date }
       }
-    }
+    },
+    adminNotes: [
+      {
+        note: String,
+        adminId: String,
+        adminName: String,
+        createdAt: { type: Date, default: Date.now }
+      }
+    ],
+
+    // ========== MEMBER IDENTITY (XKori) ==========
+    memberRoles: {
+      type: [String],
+      default: undefined,
+      index: true
+    },
+
+    // ========== FINANCIAL BEHAVIOR CLASSIFICATION ==========
+    userType: {
+      type: String,
+      enum: ['savings_only', 'contributor', 'group_owner', 'both'],
+      default: 'savings_only'
+    },
+
+    // Stats for classification
+    totalSavingsDeposits: {
+      type: Number,
+      default: 0
+    },
+    totalSavingsWithdrawals: {
+      type: Number,
+      default: 0
+    },
+    totalGroupContributions: {
+      type: Number,
+      default: 0
+    },
+    groupsOwned: {
+      type: Number,
+      default: 0
+    },
+    groupsJoined: {
+      type: Number,
+      default: 0
+    },
+
+    // Last activity dates
+    lastSavingsActivity: Date,
+    lastContributionActivity: Date,
+
+    // ========== CONTRIBUTION CONTROLS ==========
+    contributionsEnabled: {
+      type: Boolean,
+      default: true
+    },
+    contributionsPausedReason: String,
+    contributionsPausedBy: String,
+    contributionsPausedAt: Date
   },
   { timestamps: true }
 );

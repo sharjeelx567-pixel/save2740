@@ -3,6 +3,7 @@ import { User } from '../../models/auth.model';
 import { Wallet } from '../../models/wallet.model';
 import { Transaction } from '../../models/transaction';
 import { KycDocument } from '../../models/kyc-document';
+import { Save2740Plan } from '../../models/save2740.model';
 import { connectDB } from '../../config/db';
 import { authenticateToken, AuthRequest } from '../../middleware/auth';
 
@@ -53,6 +54,11 @@ router.get('/stats', authenticateToken, async (req: AuthRequest, res: Response) 
         const failedPayments = await Transaction.countDocuments({
             status: 'failed',
             createdAt: { $gte: startOfDay, $lte: endOfDay }
+        });
+
+        // Get active saving plans count
+        const activePlans = await Save2740Plan.countDocuments({
+            status: 'active'
         });
 
         // --- Chart Data Aggregation ---
@@ -120,7 +126,7 @@ router.get('/stats', authenticateToken, async (req: AuthRequest, res: Response) 
                 totalWalletBalance,
                 dailyTransactions,
                 failedPayments,
-                activePlans: 0,
+                activePlans,
                 totalRevenue: totalWalletBalance,
                 charts: {
                     transactionVolume,

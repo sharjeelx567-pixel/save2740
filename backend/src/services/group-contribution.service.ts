@@ -289,7 +289,7 @@ export async function processRoundPayout(groupId: string | mongoose.Types.Object
     // Create payout transaction
     const payoutTransaction = await Transaction.create({
         userId: currentRound.recipientId,
-        type: 'credit',
+        type: 'group_payout',
         amount: payoutAmount,
         description: `Group payout - ${group.name} (Round ${group.currentRound})`,
         status: 'completed',
@@ -476,7 +476,7 @@ async function handleChainBreak(group: IGroup, member: any, roundNumber: number)
                 // Create compensation transaction
                 await Transaction.create({
                     userId: activeMember.userId,
-                    type: 'credit',
+                    type: 'chain_break_compensation',
                     amount: sharePerMember,
                     description: `Chain break compensation - ${group.name}`,
                     status: 'completed',

@@ -1,4 +1,3 @@
-
 import express, { Response } from 'express';
 import { User, EmailVerification } from '../models/auth.model';
 import { connectDB } from '../config/db';
@@ -9,6 +8,7 @@ import { cacheGetJSON, cacheSetJSON, cacheDelete } from '../config/redis';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { sendEmail } from '../utils/email-service'; // Mock service
+import { getFinancialRole, getFinancialRoleLabel, FinancialRole } from '../utils/financial-role';
 
 const router = express.Router();
 
@@ -18,15 +18,19 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
         await connectDB();
         const cacheKey = `profile:${req.userId}`;
         const cached = await cacheGetJSON(cacheKey);
-        if (cached) {
-            return res.json({ success: true, data: cached, cached: true });
-        }
-
         const user = await User.findById(req.userId).select('-passwordHash');
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
-        await cacheSetJSON(cacheKey, user, 300);
-        res.json({ success: true, data: user });
+        const financialRole: FinancialRole = await getFinancialRole(req.userId!);
+        const financialRoleLabel = getFinancialRoleLabel(financialRole);
+        const payload = {
+            ...user.toObject(),
+            financialRole,
+            financialRoleLabel,
+        };
+
+        if (!cached) await cacheSetJSON(cacheKey, payload, 300);
+        res.json({ success: true, data: payload });
     } catch (error) {
         res.status(500).json({ success: false, error: 'Failed to get profile' });
     }
