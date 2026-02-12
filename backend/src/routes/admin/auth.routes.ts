@@ -4,7 +4,7 @@ import { Admin } from '../../modules/admin/auth/admin.model';
 import { generateAccessToken } from '../../utils/token-utils';
 import { connectDB } from '../../config/db';
 import { authenticateAdmin, authenticateToken, AuthRequest } from '../../middleware/auth';
-import { generateSecret, verifySync, generateURI } from 'otplib';
+import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
 
 const router = express.Router();
@@ -41,7 +41,7 @@ router.post('/login', async (req: Request, res: Response) => {
             }
 
             // Verify MFA Token
-            const isValidTicket = verifySync({
+            const isValidTicket = authenticator.verify({
                 token: mfaToken,
                 secret: admin.mfaSecret!
             });
@@ -151,12 +151,8 @@ router.get('/mfa/setup', authenticateAdmin, async (req: AuthRequest, res: Respon
         const admin = await Admin.findById(req.userId);
         if (!admin) return res.status(404).json({ success: false, error: 'Admin not found' });
 
-        const secret = generateSecret();
-        const otpauth = generateURI({
-            secret,
-            label: admin.email,
-            issuer: 'Save2740-Admin'
-        });
+        const secret = authenticator.generateSecret();
+        const otpauth = authenticator.keyuri(admin.email, 'Save2740-Admin', secret);
         const qrCodeUrl = await QRCode.toDataURL(otpauth);
 
         res.json({
@@ -179,7 +175,7 @@ router.post('/mfa/enable', authenticateAdmin, async (req: AuthRequest, res: Resp
         const admin = await Admin.findById(req.userId);
         if (!admin) return res.status(404).json({ success: false, error: 'Admin not found' });
 
-        const isValid = verifySync({ token, secret });
+        const isValid = authenticator.verify({ token, secret });
         if (!isValid) {
             return res.status(400).json({ success: false, error: 'Invalid MFA code' });
         }

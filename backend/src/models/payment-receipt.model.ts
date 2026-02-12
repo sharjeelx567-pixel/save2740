@@ -98,7 +98,7 @@ const PaymentReceiptSchema = new Schema<IPaymentReceipt>({
 // Indexes for efficient queries
 PaymentReceiptSchema.index({ userId: 1, paymentDate: -1 });
 PaymentReceiptSchema.index({ transactionId: 1 });
-PaymentReceiptSchema.index({ receiptNumber: 1 });
+// PaymentReceiptSchema.index({ receiptNumber: 1 }); // Removed duplicate index
 PaymentReceiptSchema.index({ paymentIntentId: 1 });
 
 export const PaymentReceipt = mongoose.models.PaymentReceipt ||
